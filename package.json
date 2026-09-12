@@ -1,0 +1,16 @@
+{
+  "name": "imeri-pengajuan",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/web",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @imeri/web",
+    "dev:web": "npm run dev -w @imeri/web",
+    "build:web": "npm run build -w @imeri/web",
+    "preview:web": "npm run preview -w @imeri/web",
+    "typecheck": "npm run typecheck -w @imeri/web"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    /* Language & emit — Vite yang mentranspilasi, tsc hanya memeriksa tipe. */
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@imeri/shared": ["../../packages/shared/src/index.ts"],
+      "@imeri/shared/*": ["../../packages/shared/src/*"]
+    },
+    "jsx": "react-jsx",
+    "useDefineForClassFields": true,
+    "noEmit": true,
+
+    /* Interop */
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+
+    /* Ketat — tanpa jalan keluar. */
+    "strict": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src", "vite.config.ts", "../../packages/shared/src"]
+}
