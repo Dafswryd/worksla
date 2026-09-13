@@ -4,6 +4,7 @@ import express from 'express'
 import { env } from './env'
 import { NotFound } from './errors'
 import { errorHandler } from './middleware/errorHandler'
+import { authRoutes } from './modules/auth/routes'
 
 export function createApp(): express.Express {
   const app = express()
@@ -15,6 +16,8 @@ export function createApp(): express.Express {
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' })
   })
+
+  app.use('/auth', authRoutes)
 
   app.use((_req, _res, next) => next(NotFound()))
   app.use(errorHandler)
