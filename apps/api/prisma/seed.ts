@@ -1,3 +1,4 @@
+import { stageIndexOf } from '@imeri/shared'
 import { prisma } from '../src/db/client'
 import { hashPassword } from '../src/modules/auth/service'
 
@@ -9,6 +10,7 @@ type CategoryValue = 'finance' | 'personnel' | 'general'
 type ClusterValue = 'HCRC' | 'MedTech' | 'StemCell' | 'DrugDevelopment'
 type StageKeyValue = 'submitter' | 'secretary' | 'deputy' | 'director' | 'recording' | 'done'
 type StatusValue = 'running' | 'returned' | 'done'
+type TrailKindValue = 'submit' | 'approve' | 'return'
 
 interface SeedUser {
   readonly key: string
@@ -79,6 +81,17 @@ interface SeedSubmission {
   readonly daysInStage: number
   readonly status: StatusValue
   readonly checklist?: readonly SeedChecklistItem[]
+}
+
+interface SeedHistoryEntry {
+  readonly actorId: string
+  readonly actorName: string
+  readonly actorPosition: string
+  readonly kind: TrailKindValue
+  readonly action: string
+  readonly comment?: string
+  readonly fromStage: StageKeyValue
+  readonly toStage: StageKeyValue
 }
 
 /**
@@ -156,11 +169,116 @@ async function upsertUser(user: SeedUser, passwordHash: string): Promise<string>
 }
 
 /**
+ * Builds the history trail for a submission, mirroring `autoHistory` in
+ * `apps/web/src/constants/submissions.ts` exactly:
+ *
+ * - a `submit` entry, always;
+ * - if the submission was returned, a `return` entry and nothing else — a
+ *   returned document never made it past the secretary, so there is nothing
+ *   to approve yet;
+ * - otherwise, one `approve` entry for every desk the document has already
+ *   left, decided by `stageIndexOf(stageKey)`: index ≥ 2 (past secretary) →
+ *   the assigned secretary forwards to Wadir; ≥ 3 (past deputy) → Hendra
+ *   Wijaya paraphs and forwards to Direktur; ≥ 4 (past director) → Ratna
+ *   Puspita approves and signs; ≥ 5 (done) → the secretary records the
+ *   result. A submission sitting at `deputy` has therefore left only
+ *   `secretary`, so it gets exactly the first of these.
+ */
+function buildHistory(
+  input: SeedSubmission,
+  requesterId: string,
+  requesterName: string,
+  secretaryId: string,
+  secretaryName: string,
+  secretaryPosition: string,
+  deputy: { readonly id: string; readonly name: string; readonly position: string },
+  director: { readonly id: string; readonly name: string; readonly position: string },
+): readonly SeedHistoryEntry[] {
+  const entries: SeedHistoryEntry[] = [
+    {
+      actorId: requesterId,
+      actorName: requesterName,
+      actorPosition: 'Pengaju',
+      kind: 'submit',
+      action: 'mengirim pengajuan',
+      fromStage: 'submitter',
+      toStage: 'secretary',
+    },
+  ]
+
+  if (input.status === 'returned') {
+    const checklist = input.checklist ?? []
+    entries.push({
+      actorId: secretaryId,
+      actorName: secretaryName,
+      actorPosition: secretaryPosition,
+      kind: 'return',
+      action: 'mengembalikan ke pengaju',
+      ...(checklist.length > 0 ? { comment: `${checklist.map((item) => item.text).join('. ')}.` } : {}),
+      fromStage: 'secretary',
+      toStage: 'submitter',
+    })
+    return entries
+  }
+
+  const index = stageIndexOf(input.stageKey)
+
+  if (index >= 2) {
+    entries.push({
+      actorId: secretaryId,
+      actorName: secretaryName,
+      actorPosition: secretaryPosition,
+      kind: 'approve',
+      action: 'meneruskan ke Wadir',
+      fromStage: 'secretary',
+      toStage: 'deputy',
+    })
+  }
+  if (index >= 3) {
+    entries.push({
+      actorId: deputy.id,
+      actorName: deputy.name,
+      actorPosition: deputy.position,
+      kind: 'approve',
+      action: 'memberi paraf dan meneruskan ke Direktur',
+      fromStage: 'deputy',
+      toStage: 'director',
+    })
+  }
+  if (index >= 4) {
+    entries.push({
+      actorId: director.id,
+      actorName: director.name,
+      actorPosition: director.position,
+      kind: 'approve',
+      action: 'menyetujui dan menandatangani',
+      fromStage: 'director',
+      toStage: 'recording',
+    })
+  }
+  if (index >= 5) {
+    entries.push({
+      actorId: secretaryId,
+      actorName: secretaryName,
+      actorPosition: secretaryPosition,
+      kind: 'approve',
+      action: 'merekam hasil dan memberi tahu pengaju',
+      fromStage: 'recording',
+      toStage: 'done',
+    })
+  }
+
+  return entries
+}
+
+/**
  * Creates one submission with history consistent with the stage it stopped
- * at: a `submit` entry always, and — for returned submissions — a `return`
- * entry whose id the checklist rows hang off (`historyEntryId`), so a later
- * task's "active checklist" derivation, which looks at the most recent
- * return entry, finds them.
+ * at (see `buildHistory`). Entries are written sequentially with strictly
+ * ascending `createdAt` timestamps, one second apart, so their chronological
+ * order never depends on database clock resolution — a later task's "active
+ * checklist" derivation picks the most recent `return` entry by timestamp.
+ * A returned submission's `ChecklistItem` rows carry that entry's id
+ * (`historyEntryId`), never the submission's alone.
  *
  * `stageEnteredAt` is backdated by `daysInStage - 1` days so the derived day
  * count on screen (`daysSince`) reproduces the prototype's "hari n/m" label.
@@ -177,8 +295,18 @@ async function createSubmission(
   const requesterId = ids.get(input.requesterKey)
   const secretaryKey = ROUTE[input.category]
   const secretaryId = ids.get(secretaryKey)
-  if (!requesterId || !secretaryId) {
+  const deputyId = ids.get('hendra')
+  const directorId = ids.get('ratna')
+  if (!requesterId || !secretaryId || !deputyId || !directorId) {
     throw new Error(`Seed data error: missing user for submission ${input.code}`)
+  }
+
+  const requester = names.get(input.requesterKey)
+  const secretary = names.get(secretaryKey)
+  const deputy = names.get('hendra')
+  const director = names.get('ratna')
+  if (!requester || !secretary || !deputy || !director) {
+    throw new Error(`Seed data error: missing user name for submission ${input.code}`)
   }
 
   const daysAgo = Math.max(input.daysInStage, 1) - 1
@@ -198,43 +326,44 @@ async function createSubmission(
     },
   })
 
-  const requester = names.get(input.requesterKey)
-  if (!requester) throw new Error(`Seed data error: unknown requester ${input.requesterKey}`)
+  const entries = buildHistory(
+    input,
+    requesterId,
+    requester.name,
+    secretaryId,
+    secretary.name,
+    secretary.position,
+    { id: deputyId, name: deputy.name, position: deputy.position },
+    { id: directorId, name: director.name, position: director.position },
+  )
 
-  await prisma.historyEntry.create({
-    data: {
-      submissionId: submission.id,
-      actorId: requesterId,
-      actorName: requester.name,
-      actorPosition: 'Pengaju',
-      kind: 'submit',
-      action: 'mengirim pengajuan',
-      fromStage: 'submitter',
-      toStage: 'secretary',
-    },
-  })
+  const base = Date.now()
+  let returnEntryId: string | undefined
 
-  if (input.status === 'returned' && input.checklist && input.checklist.length > 0) {
-    const secretary = names.get(secretaryKey)
-    if (!secretary) throw new Error(`Seed data error: unknown secretary ${secretaryKey}`)
-
-    const returnEntry = await prisma.historyEntry.create({
+  for (let i = 0; i < entries.length; i += 1) {
+    const entry = entries[i]
+    if (!entry) continue
+    const created = await prisma.historyEntry.create({
       data: {
         submissionId: submission.id,
-        actorId: secretaryId,
-        actorName: secretary.name,
-        actorPosition: secretary.position,
-        kind: 'return',
-        action: 'mengembalikan ke pengaju',
-        comment: `${input.checklist.map((item) => item.text).join('. ')}.`,
-        fromStage: 'secretary',
-        toStage: 'submitter',
+        actorId: entry.actorId,
+        actorName: entry.actorName,
+        actorPosition: entry.actorPosition,
+        kind: entry.kind,
+        action: entry.action,
+        ...(entry.comment === undefined ? {} : { comment: entry.comment }),
+        fromStage: entry.fromStage,
+        toStage: entry.toStage,
+        createdAt: new Date(base + i * 1000),
       },
     })
+    if (entry.kind === 'return') returnEntryId = created.id
+  }
 
+  if (returnEntryId && input.checklist && input.checklist.length > 0) {
     await prisma.checklistItem.createMany({
       data: input.checklist.map((item) => ({
-        historyEntryId: returnEntry.id,
+        historyEntryId: returnEntryId,
         submissionId: submission.id,
         text: item.text,
         done: item.done,

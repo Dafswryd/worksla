@@ -21,14 +21,43 @@ describe('seed', () => {
     expect(await prisma.categoryRoute.count()).toBe(3)
   })
 
-  it('tiap pengajuan punya sekret yang terkunci dan riwayat', async () => {
+  it('tiap pengajuan punya sekret yang terkunci', async () => {
     await seed()
-    const submissions = await prisma.submission.findMany({ include: { history: true } })
+    const submissions = await prisma.submission.findMany()
     expect(submissions.length).toBeGreaterThan(0)
     for (const s of submissions) {
       expect(s.assignedSecretaryId).toBeTruthy()
-      expect(s.history.length).toBeGreaterThan(0)
     }
+  })
+
+  it('riwayat mencantumkan setiap tahap yang sudah dilewati, bukan cuma pengiriman', async () => {
+    await seed()
+
+    const history = async (code: string) => {
+      const s = await prisma.submission.findUniqueOrThrow({
+        where: { code },
+        include: { history: { orderBy: { createdAt: 'asc' } } },
+      })
+      return s.history.map((h) => h.kind)
+    }
+
+    // secretary: baru diteruskan, belum ada yang menyetujui apa pun
+    expect(await history('PJK-2609-018')).toEqual(['submit'])
+    // director: sudah lewat sekret dan wadir → dua entri approve
+    expect(await history('PJK-2609-009')).toEqual(['submit', 'approve', 'approve'])
+    // done: lewat sekret, wadir, direktur, dan rekam → empat entri approve
+    expect(await history('PJK-2608-097')).toEqual(['submit', 'approve', 'approve', 'approve', 'approve'])
+  })
+
+  it('pengajuan yang dikembalikan berhenti di entri return, tanpa approve sesudahnya', async () => {
+    await seed()
+    const s = await prisma.submission.findUniqueOrThrow({
+      where: { code: 'PJP-2609-021' },
+      include: { history: { orderBy: { createdAt: 'asc' } } },
+    })
+    expect(s.history.map((h) => h.kind)).toEqual(['submit', 'return'])
+    const returnIndex = s.history.findIndex((h) => h.kind === 'return')
+    expect(s.history.slice(returnIndex + 1).some((h) => h.kind === 'approve')).toBe(false)
   })
 
   it('berkas yang dikembalikan punya checklist yang menggantung pada entri pengembalian', async () => {
