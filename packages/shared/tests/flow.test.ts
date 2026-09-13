@@ -7,17 +7,39 @@ import {
   isOverdue,
   isVisible,
   overdueDays,
-  stageAt,
 } from '../src/flow'
+import { STAGE_ORDER, nextStage, previousStage, stageByKey, stageIndexOf } from '../src/stages'
 import type { Role, Stage, Submission } from '../src/types'
 
+describe('urutan tahap', () => {
+  it('enam tahap dengan urutan tetap', () => {
+    expect(STAGE_ORDER).toEqual(['submitter', 'secretary', 'deputy', 'director', 'recording', 'done'])
+  })
+
+  it('stageIndexOf mengembalikan posisi', () => {
+    expect(stageIndexOf('submitter')).toBe(0)
+    expect(stageIndexOf('done')).toBe(5)
+  })
+
+  it('nextStage berhenti di tahap terakhir', () => {
+    expect(nextStage('submitter')).toBe('secretary')
+    expect(nextStage('recording')).toBe('done')
+    expect(nextStage('done')).toBe('done')
+  })
+
+  it('previousStage berhenti di tahap pertama', () => {
+    expect(previousStage('deputy')).toBe('secretary')
+    expect(previousStage('submitter')).toBe('submitter')
+  })
+})
+
 const STAGES: readonly Stage[] = [
-  { key: 'submitter', desk: 'Pengaju', action: 'Penyusunan berkas', sla: null },
-  { key: 'secretary', desk: 'Sekret', action: 'Verifikasi berkas', sla: 1 },
-  { key: 'deputy', desk: 'Wadir', action: 'QC & paraf', sla: 2 },
-  { key: 'director', desk: 'Direktur', action: 'Persetujuan', sla: 2 },
-  { key: 'recording', desk: 'Sekret', action: 'Rekam & arsip', sla: 1 },
-  { key: 'done', desk: 'Pengaju', action: 'Selesai', sla: null },
+  { key: 'submitter', sla: null },
+  { key: 'secretary', sla: 1 },
+  { key: 'deputy', sla: 2 },
+  { key: 'director', sla: 2 },
+  { key: 'recording', sla: 1 },
+  { key: 'done', sla: null },
 ]
 
 const rina: Role = { id: 'rina', name: 'Rina', type: 'submitter', position: 'Pengaju', initials: 'RK' }
@@ -37,7 +59,7 @@ function make(over: Partial<Submission> = {}): Submission {
     cluster: 'HCRC',
     category: 'finance',
     createdAt: '1 Sep 2026',
-    stageIndex: 1,
+    stageKey: 'secretary',
     daysInStage: 1,
     status: 'running',
     attachments: [],
@@ -47,11 +69,14 @@ function make(over: Partial<Submission> = {}): Submission {
   }
 }
 
-describe('stageAt', () => {
-  it('menjepit indeks ke rentang yang valid', () => {
-    expect(stageAt(STAGES, -5).key).toBe('submitter')
-    expect(stageAt(STAGES, 99).key).toBe('done')
-    expect(stageAt(STAGES, 2).key).toBe('deputy')
+describe('stageByKey', () => {
+  it('mengembalikan aturan tahap yang diminta', () => {
+    expect(stageByKey(STAGES, 'deputy').sla).toBe(2)
+    expect(stageByKey(STAGES, 'submitter').sla).toBeNull()
+  })
+
+  it('melempar kalau tahapnya tidak dikonfigurasi', () => {
+    expect(() => stageByKey([], 'deputy')).toThrow()
   })
 })
 
@@ -88,54 +113,54 @@ describe('isVisible', () => {
 
 describe('isHolder', () => {
   it('berkas selesai tidak dipegang siapa pun', () => {
-    expect(isHolder(make({ status: 'done', stageIndex: 5 }), rina, STAGES)).toBe(false)
+    expect(isHolder(make({ status: 'done', stageKey: 'done' }), rina, STAGES)).toBe(false)
   })
 
   it('tahap submitter dipegang pengajunya saja', () => {
-    const s = make({ stageIndex: 0, requesterId: 'rina' })
+    const s = make({ stageKey: 'submitter', requesterId: 'rina' })
     expect(isHolder(s, rina, STAGES)).toBe(true)
     expect(isHolder(s, sari, STAGES)).toBe(false)
   })
 
   it('tahap secretary dan recording dipegang sekret berkategori sama', () => {
-    expect(isHolder(make({ stageIndex: 1, category: 'finance' }), sari, STAGES)).toBe(true)
-    expect(isHolder(make({ stageIndex: 4, category: 'finance' }), sari, STAGES)).toBe(true)
-    expect(isHolder(make({ stageIndex: 1, category: 'finance' }), budi, STAGES)).toBe(false)
+    expect(isHolder(make({ stageKey: 'secretary', category: 'finance' }), sari, STAGES)).toBe(true)
+    expect(isHolder(make({ stageKey: 'recording', category: 'finance' }), sari, STAGES)).toBe(true)
+    expect(isHolder(make({ stageKey: 'secretary', category: 'finance' }), budi, STAGES)).toBe(false)
   })
 
   it('tahap deputy dipegang wadir saja', () => {
-    expect(isHolder(make({ stageIndex: 2 }), hendra, STAGES)).toBe(true)
-    expect(isHolder(make({ stageIndex: 2 }), ratna, STAGES)).toBe(false)
+    expect(isHolder(make({ stageKey: 'deputy' }), hendra, STAGES)).toBe(true)
+    expect(isHolder(make({ stageKey: 'deputy' }), ratna, STAGES)).toBe(false)
   })
 
   it('tahap director dipegang direktur saja', () => {
-    expect(isHolder(make({ stageIndex: 3 }), ratna, STAGES)).toBe(true)
-    expect(isHolder(make({ stageIndex: 3 }), hendra, STAGES)).toBe(false)
+    expect(isHolder(make({ stageKey: 'director' }), ratna, STAGES)).toBe(true)
+    expect(isHolder(make({ stageKey: 'director' }), hendra, STAGES)).toBe(false)
   })
 
   it('monitor tidak pernah memegang apa pun', () => {
-    for (let i = 0; i < STAGES.length; i += 1) {
-      expect(isHolder(make({ stageIndex: i }), nadia, STAGES)).toBe(false)
-      expect(isHolder(make({ stageIndex: i }), yoga, STAGES)).toBe(false)
+    for (const key of STAGE_ORDER) {
+      expect(isHolder(make({ stageKey: key }), nadia, STAGES)).toBe(false)
+      expect(isHolder(make({ stageKey: key }), yoga, STAGES)).toBe(false)
     }
   })
 })
 
 describe('isOverdue / overdueDays', () => {
   it('tahap tanpa batas tidak pernah terlambat', () => {
-    expect(isOverdue(make({ stageIndex: 0, daysInStage: 99 }), STAGES)).toBe(false)
-    expect(overdueDays(make({ stageIndex: 0, daysInStage: 99 }), STAGES)).toBe(0)
+    expect(isOverdue(make({ stageKey: 'submitter', daysInStage: 99 }), STAGES)).toBe(false)
+    expect(overdueDays(make({ stageKey: 'submitter', daysInStage: 99 }), STAGES)).toBe(0)
   })
 
   it('tepat di batas belum terlambat', () => {
-    expect(isOverdue(make({ stageIndex: 1, daysInStage: 1 }), STAGES)).toBe(false)
-    expect(isOverdue(make({ stageIndex: 1, daysInStage: 2 }), STAGES)).toBe(true)
-    expect(overdueDays(make({ stageIndex: 1, daysInStage: 3 }), STAGES)).toBe(2)
+    expect(isOverdue(make({ stageKey: 'secretary', daysInStage: 1 }), STAGES)).toBe(false)
+    expect(isOverdue(make({ stageKey: 'secretary', daysInStage: 2 }), STAGES)).toBe(true)
+    expect(overdueDays(make({ stageKey: 'secretary', daysInStage: 3 }), STAGES)).toBe(2)
   })
 
   it('berkas selesai tidak pernah terlambat', () => {
-    expect(isOverdue(make({ status: 'done', stageIndex: 1, daysInStage: 99 }), STAGES)).toBe(false)
-    expect(overdueDays(make({ status: 'done', stageIndex: 1, daysInStage: 99 }), STAGES)).toBe(0)
+    expect(isOverdue(make({ status: 'done', stageKey: 'secretary', daysInStage: 99 }), STAGES)).toBe(false)
+    expect(overdueDays(make({ status: 'done', stageKey: 'secretary', daysInStage: 99 }), STAGES)).toBe(0)
   })
 })
 

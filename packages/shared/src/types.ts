@@ -2,7 +2,7 @@
 
 export type Category = 'finance' | 'personnel' | 'general'
 
-export type Cluster = 'HCRC' | 'MedTech' | 'Stem Cell' | 'Drug Development'
+export type Cluster = 'HCRC' | 'MedTech' | 'StemCell' | 'DrugDevelopment'
 
 /** The six stages a document passes through, in order. */
 export type StageKey = 'submitter' | 'secretary' | 'deputy' | 'director' | 'recording' | 'done'
@@ -18,10 +18,6 @@ export type StaffScope = Cluster | 'cross-cluster'
 
 export interface Stage {
   readonly key: StageKey
-  /** The desk holding the document at this stage. */
-  readonly desk: string
-  /** The work carried out at that desk. */
-  readonly action: string
   /** Day limit for this stage; null means unbounded. */
   readonly sla: number | null
 }
@@ -54,9 +50,9 @@ export interface Submission {
   readonly cluster: Cluster
   readonly category: Category
   readonly createdAt: string
-  /** Index into the stage list (0..5). */
-  readonly stageIndex: number
-  /** How many days the document has sat at the current stage. */
+  /** Which desk the document is sitting at. */
+  readonly stageKey: StageKey
+  /** Days at the current desk, derived from stageEnteredAt by the caller. */
   readonly daysInStage: number
   readonly status: SubmissionStatus
   readonly attachments: readonly Attachment[]
