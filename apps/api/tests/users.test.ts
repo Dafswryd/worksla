@@ -19,7 +19,8 @@ describe('GET /staff', () => {
     const admin = await loginAs(app, 'yoga.p@ui.ac.id', PW)
     const res = await admin.get('/staff')
     expect(res.status).toBe(200)
-    expect(res.body.length).toBeGreaterThan(0)
+    // 4 submitters + 3 secretaries + 1 deputy + 1 director; admins and monitors excluded.
+    expect(res.body.length).toBe(9)
     expect(res.body[0]).toHaveProperty('completed30')
     expect(res.body[0]).toHaveProperty('avgDays')
   })
@@ -27,7 +28,12 @@ describe('GET /staff', () => {
   it('monitor hanya melihat pengaju clusternya, plus meja lintas cluster', async () => {
     const nadia = await loginAs(app, 'nadia.r@ui.ac.id', PW)
     const res = await nadia.get('/staff')
+    // Rina (HCRC submitter) + 3 secretaries + 1 deputy + 1 director; the other
+    // three clusters' submitters are filtered out — this is a privacy boundary,
+    // not just a display preference, so the count must be exact.
+    expect(res.body.length).toBe(6)
     const submitters = res.body.filter((s: { type: string }) => s.type === 'submitter')
+    expect(submitters.length).toBeGreaterThan(0)
     for (const s of submitters) expect(s.scope).toBe('HCRC')
   })
 
@@ -95,6 +101,30 @@ describe('PATCH /users/:id', () => {
 
     const admin = await loginAs(app, 'yoga.p@ui.ac.id', PW)
     await admin.patch(`/users/${target.id}`).send({ active: false })
+
+    expect((await tuti.get('/auth/me')).status).toBe(401)
+    // The 401 above would also happen if `active` were merely flipped, since
+    // roleForToken already rejects an inactive user's session regardless of
+    // whether the row still exists. What actually distinguishes "revoked" from
+    // "suspended" is that the row itself is gone — assert that directly.
+    expect(await prisma.session.count({ where: { userId: target.id } })).toBe(0)
+  })
+
+  it('mengaktifkan kembali tidak memulihkan sesi lama — kuki lama tetap mati', async () => {
+    const target = await prisma.user.findUniqueOrThrow({ where: { email: 'tuti.m@ui.ac.id' } })
+    const tuti = await loginAs(app, 'tuti.m@ui.ac.id', PW)
+    expect((await tuti.get('/auth/me')).status).toBe(200)
+
+    const admin = await loginAs(app, 'yoga.p@ui.ac.id', PW)
+    await admin.patch(`/users/${target.id}`).send({ active: false })
+    expect(await prisma.session.count({ where: { userId: target.id } })).toBe(0)
+
+    // Reactivate the account, but the ORIGINAL agent's cookie must not regain
+    // access — its session row was deleted, not merely suspended, so
+    // reactivating the account cannot bring it back. A flag-flip-only
+    // implementation would let this old cookie work again once `active` is
+    // true; that is exactly the behaviour this test is here to catch.
+    await admin.patch(`/users/${target.id}`).send({ active: true })
 
     expect((await tuti.get('/auth/me')).status).toBe(401)
   })
