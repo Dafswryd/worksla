@@ -24,6 +24,7 @@ const rina: Role = { id: 'rina', name: 'Rina', type: 'submitter', position: 'Pen
 const sari: Role = { id: 'sari', name: 'Sari', type: 'secretary', position: 'Sekret', initials: 'SD', category: 'finance' }
 const budi: Role = { id: 'budi', name: 'Budi', type: 'secretary', position: 'Sekret', initials: 'BS', category: 'personnel' }
 const hendra: Role = { id: 'hendra', name: 'Hendra', type: 'deputy', position: 'Wadir', initials: 'HW' }
+const ratna: Role = { id: 'ratna', name: 'Ratna Puspita', type: 'director', position: 'Direktur', initials: 'RP' }
 const yoga: Role = { id: 'yoga', name: 'Yoga', type: 'admin', position: 'Admin', initials: 'YP' }
 const nadia: Role = { id: 'nadia', name: 'Nadia', type: 'monitor', position: 'Monitor', initials: 'NR', cluster: 'HCRC' }
 
@@ -100,6 +101,16 @@ describe('isHolder', () => {
     expect(isHolder(make({ stageIndex: 1, category: 'finance' }), sari, STAGES)).toBe(true)
     expect(isHolder(make({ stageIndex: 4, category: 'finance' }), sari, STAGES)).toBe(true)
     expect(isHolder(make({ stageIndex: 1, category: 'finance' }), budi, STAGES)).toBe(false)
+  })
+
+  it('tahap deputy dipegang wadir saja', () => {
+    expect(isHolder(make({ stageIndex: 2 }), hendra, STAGES)).toBe(true)
+    expect(isHolder(make({ stageIndex: 2 }), ratna, STAGES)).toBe(false)
+  })
+
+  it('tahap director dipegang direktur saja', () => {
+    expect(isHolder(make({ stageIndex: 3 }), ratna, STAGES)).toBe(true)
+    expect(isHolder(make({ stageIndex: 3 }), hendra, STAGES)).toBe(false)
   })
 
   it('monitor tidak pernah memegang apa pun', () => {
