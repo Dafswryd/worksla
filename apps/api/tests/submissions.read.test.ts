@@ -31,12 +31,14 @@ describe('GET /submissions', () => {
   it('monitor cluster hanya menerima berkas clusternya', async () => {
     const agent = await loginAs(app, 'nadia.r@ui.ac.id', PW)
     const res = await agent.get('/submissions')
+    expect(res.body.length).toBeGreaterThan(0)
     for (const item of res.body) expect(item.cluster).toBe('HCRC')
   })
 
   it('pengaju hanya menerima berkas miliknya', async () => {
     const agent = await loginAs(app, 'rina.k@ui.ac.id', PW)
     const res = await agent.get('/submissions')
+    expect(res.body.length).toBeGreaterThan(0)
     for (const item of res.body) expect(item.requester).toBe('Rina Kartika')
   })
 
@@ -51,6 +53,7 @@ describe('GET /submissions', () => {
   it('tidak menerima parameter untuk melihat sebagai peran lain', async () => {
     const agent = await loginAs(app, 'sari.d@ui.ac.id', PW)
     const res = await agent.get('/submissions?role=admin&category=personnel')
+    expect(res.body.length).toBeGreaterThan(0)
     for (const item of res.body) expect(item.category).toBe('finance')
   })
 
