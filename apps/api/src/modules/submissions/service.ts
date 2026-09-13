@@ -2,7 +2,7 @@ import type { Category, Role, Stage, Submission } from '@imeri/shared'
 import { canAdvance, isHolder, isVisible, nextStage, previousStage } from '@imeri/shared'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client'
-import { toDomainSubmission } from '../../db/toDomain'
+import { activeChecklist, toDomainSubmission } from '../../db/toDomain'
 import type { SubmissionRow } from '../../db/toDomain'
 import { BadRequest, Conflict, Forbidden, NotFound } from '../../errors'
 import { confirmUploaded } from '../documents/service'
@@ -57,13 +57,16 @@ const MAX_CODE_ATTEMPTS = 10
  * move a submission that is already running, so nothing here re-reads the route
  * after this point.
  *
- * Every document id is verified with `confirmUploaded` (real object in the store,
- * real size) before the submission is written — a reference to an object that never
- * landed in MinIO is worse than a rejected request. Each id is also checked, inside
- * the same transaction that writes the submission, for ownership (`uploadedById`)
- * and for not already belonging to some other submission — otherwise a stale id
- * from an earlier upload could silently re-point a document that already belongs
- * elsewhere, making it vanish from that other submission.
+ * Every document id is verified with `confirmUploaded` (owned by this user, real
+ * object in the store, real size) before the submission is written — a reference
+ * to an object that never landed in MinIO is worse than a rejected request.
+ * Ownership is settled inside `confirmUploaded` itself, before it touches
+ * anything, because its oversize branch deletes both the object and the row.
+ * Each id is checked again for ownership (`uploadedById`) inside the same
+ * transaction that writes the submission, along with not already belonging to
+ * some other submission — otherwise a stale id from an earlier upload could
+ * silently re-point a document that already belongs elsewhere, making it vanish
+ * from that other submission.
  *
  * Code allocation runs as its own small transaction, separate from the submission
  * write: `nextCode`'s increment must survive even when the write that follows it
@@ -77,8 +80,8 @@ const MAX_CODE_ATTEMPTS = 10
 export async function createSubmission(user: Role, input: CreateInput): Promise<Submission> {
   if (user.type !== 'submitter') throw Forbidden('not_your_desk')
 
-  await confirmUploaded(input.primaryDocumentId)
-  for (const id of input.supportingDocumentIds) await confirmUploaded(id)
+  await confirmUploaded(input.primaryDocumentId, user.id)
+  for (const id of input.supportingDocumentIds) await confirmUploaded(id, user.id)
 
   const route = await loadRoute()
   const assignedSecretaryId = route[input.category]
@@ -247,6 +250,14 @@ export async function sendBack(role: Role, code: string, comment: string): Promi
     const from = row.stageKey
     const to = previousStage(from)
 
+    // `previousStage` clamps at the first stage, so at `submitter` it returns
+    // `submitter` again. Without this the requester — who IS the holder once a
+    // document has been returned to them — could "return" it to themselves,
+    // writing a history entry with `fromStage === toStage` and a fresh blocking
+    // checklist they wrote against their own document. There is no desk behind
+    // the first one; the call has nowhere to go.
+    if (to === from) throw Conflict('already_at_first_stage')
+
     const entry = await tx.historyEntry.create({
       data: {
         submissionId: row.id,
@@ -276,6 +287,14 @@ export async function sendBack(role: Role, code: string, comment: string): Promi
   })
 }
 
+/**
+ * Only the newest return's items may be ticked. `row.checklist` holds every
+ * round the submission ever collected — they are kept on purpose (§2.8), so
+ * "what did the Sekret ask for back then?" stays answerable — and searching all
+ * of it would let the current holder reopen a closed round from three returns
+ * ago. `activeChecklist` is the same narrowing the read path applies, so an id
+ * outside it is an id the caller was never shown: 404, like any other unknown id.
+ */
 export async function toggleChecklistItem(
   role: Role,
   code: string,
@@ -283,7 +302,7 @@ export async function toggleChecklistItem(
   done: boolean,
 ): Promise<Submission> {
   return guarded(code, role, async ({ tx, row }) => {
-    const item = row.checklist.find((c) => c.id === itemId)
+    const item = activeChecklist(row).find((c) => c.id === itemId)
     if (!item) throw NotFound()
 
     await tx.checklistItem.update({

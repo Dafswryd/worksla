@@ -5,6 +5,7 @@ export type ErrorCode =
   | 'not_your_desk'
   | 'checklist_open'
   | 'comment_required'
+  | 'already_at_first_stage'
   | 'primary_document_frozen'
   | 'document_not_owned'
   | 'document_already_attached'

@@ -114,8 +114,30 @@ describe('POST /submissions/:code/return', () => {
   })
 
   it('tidak pernah mundur melewati tahap pertama', async () => {
-    const row = await prisma.submission.findFirstOrThrow({ where: { status: 'returned' } })
+    // Actually send the document back first — reading a seeded `returned` row
+    // and asserting its stage proves nothing about `/return`, it only restates
+    // the fixture.
+    const code = await atSecretary()
+    const sari = await loginAs(app, 'sari.d@ui.ac.id', PW)
+    const back = await sari.post(`/submissions/${code}/return`).send({ comment: 'Perbaiki tanggal di form' })
+    expect(back.status).toBe(200)
+    expect(back.body.stageKey).toBe('submitter')
+
+    // Now the requester holds it at the first stage. There is no desk behind
+    // this one, so `/return` has nowhere to send it — and must not invent a
+    // self-addressed return entry with a fresh blocking checklist.
+    const rina = await loginAs(app, 'rina.k@ui.ac.id', PW)
+    const again = await rina.post(`/submissions/${code}/return`).send({ comment: 'Coba mundur lagi' })
+    expect(again.status).toBe(409)
+    expect(again.body.error.code).toBe('already_at_first_stage')
+
+    const row = await prisma.submission.findUniqueOrThrow({
+      where: { code },
+      include: { history: true, checklist: true },
+    })
     expect(row.stageKey).toBe('submitter')
+    expect(row.history.every((entry) => entry.fromStage !== entry.toStage || entry.kind !== 'return')).toBe(true)
+    expect(row.checklist).toHaveLength(1)
   })
 
   it('komentar kosong ditolak', async () => {
@@ -146,6 +168,43 @@ describe('checklist mengunci', () => {
     expect(ok.status).toBe(200)
     expect(ok.body.stageKey).toBe('secretary')
     expect(ok.body.checklist).toHaveLength(0)
+  })
+
+  it('poin dari ronde pengembalian yang sudah ditutup tidak bisa diubah lagi', async () => {
+    // Checklist rows are never deleted (§2.8) — they belong to the return that
+    // created them. Only the newest return's items are live; reopening a point
+    // from an earlier round would rewrite a closed piece of the record.
+    const code = await atSecretary()
+    const sari = await loginAs(app, 'sari.d@ui.ac.id', PW)
+    const rina = await loginAs(app, 'rina.k@ui.ac.id', PW)
+
+    // Round one: two points, both closed by the requester, then forwarded.
+    await sari.post(`/submissions/${code}/return`).send({ comment: 'Poin ronde satu A\nPoin ronde satu B' })
+    const row = await prisma.submission.findUniqueOrThrow({ where: { code }, include: { checklist: true } })
+    const firstRound = row.checklist.map((item) => item.id)
+    expect(firstRound).toHaveLength(2)
+    for (const id of firstRound) {
+      expect((await rina.patch(`/submissions/${code}/checklist/${id}`).send({ done: true })).status).toBe(200)
+    }
+    expect((await rina.post(`/submissions/${code}/advance`).send({})).status).toBe(200)
+
+    // Round two: a new return creates a new, separate set.
+    await sari.post(`/submissions/${code}/return`).send({ comment: 'Poin ronde dua' })
+    const after = await prisma.submission.findUniqueOrThrow({ where: { code }, include: { checklist: true } })
+    const secondRound = after.checklist.filter((item) => !firstRound.includes(item.id))
+    expect(secondRound).toHaveLength(1)
+
+    // Round one's ids are no longer live: 404, the same answer any unknown id gets.
+    const stale = await rina.patch(`/submissions/${code}/checklist/${firstRound[0] as string}`).send({ done: false })
+    expect(stale.status).toBe(404)
+    expect(stale.body.error.code).toBe('not_found')
+
+    const untouched = await prisma.checklistItem.findUniqueOrThrow({ where: { id: firstRound[0] as string } })
+    expect(untouched.done).toBe(true)
+
+    // The current round is still perfectly writable.
+    const live = await rina.patch(`/submissions/${code}/checklist/${secondRound[0]!.id}`).send({ done: true })
+    expect(live.status).toBe(200)
   })
 
   it('sekret dalam cakupan tapi bukan pemegang berkas ditolak 403', async () => {

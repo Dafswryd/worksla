@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto'
-import type { Role, Submission } from '@imeri/shared'
+import type { Role, Stage, Submission } from '@imeri/shared'
 import { isHolder, isVisible } from '@imeri/shared'
 import { prisma } from '../../db/client'
 import { toDomainSubmission } from '../../db/toDomain'
+import type { SubmissionRow } from '../../db/toDomain'
 import { BadRequest, Conflict, Forbidden, NotFound } from '../../errors'
 import { env } from '../../env'
 import { loadStages } from '../flowRules/repository'
-import { SUBMISSION_INCLUDE, lockAndLoad } from '../submissions/repository'
+import { SUBMISSION_INCLUDE, lockAndLoad, submissionRepo } from '../submissions/repository'
 import { ALLOWED_CONTENT_TYPES } from '../../storage/FileStore'
 import { s3Store } from '../../storage/s3Store'
 import { documentRepo } from './repository'
@@ -73,10 +74,19 @@ export async function downloadUrlFor(documentId: string, role: Role): Promise<st
   return s3Store.presignDownload(document.storageKey, document.name, DOWNLOAD_TTL)
 }
 
-/** Verify the object really landed, and that its real size is within the limit. */
-export async function confirmUploaded(documentId: string): Promise<void> {
+/**
+ * Verify the object really landed, and that its real size is within the limit.
+ *
+ * Ownership is settled first, before anything else happens: the oversize branch
+ * below deletes the stored object AND the row, and `markReady` mutates it, so
+ * an id alone must never be enough to reach either. UUID ids make guessing
+ * someone else's document impractical, but "hard to guess" is not an
+ * authorization check — `ownerId` is.
+ */
+export async function confirmUploaded(documentId: string, ownerId: string): Promise<void> {
   const document = await documentRepo.byId(documentId)
   if (!document) throw BadRequest('document_not_uploaded')
+  if (document.uploadedById !== ownerId) throw BadRequest('document_not_owned')
 
   const meta = await s3Store.head(document.storageKey)
   if (!meta) throw BadRequest('document_not_uploaded')
@@ -95,6 +105,24 @@ export async function confirmUploaded(documentId: string): Promise<void> {
  * deputy and director could initial one file and have its contents change behind
  * them. Revision has to go through the official route — returned first.
  */
+function assertMayAttach(
+  role: Role,
+  row: SubmissionRow,
+  kind: 'primary' | 'supporting',
+  stages: readonly Stage[],
+): void {
+  const submission = toDomainSubmission(row)
+  if (!isVisible(submission, role)) throw NotFound()
+
+  if (kind === 'primary') {
+    if (role.id !== row.requesterId || row.stageKey !== 'submitter') {
+      throw Forbidden('primary_document_frozen')
+    }
+  } else if (!isHolder(submission, role, stages)) {
+    throw Forbidden('not_your_desk')
+  }
+}
+
 export async function attachDocument(
   role: Role,
   code: string,
@@ -102,22 +130,25 @@ export async function attachDocument(
   kind: 'primary' | 'supporting',
   note?: string,
 ): Promise<Submission> {
-  await confirmUploaded(documentId)
   const stages = await loadStages()
+
+  // Authorization comes before `confirmUploaded`, never after: that call has
+  // side effects on the document it is handed (marking it ready, or deleting
+  // object and row when the real size is over the limit), so an actor who may
+  // not write here must be turned away before reaching it. This unlocked read
+  // decides nothing on its own — the locked transaction below repeats the same
+  // check and is what actually settles the outcome — it only keeps the check
+  // ahead of the side effect without holding a row lock across S3 round-trips.
+  const preview = await submissionRepo.byCode(code)
+  if (!preview) throw NotFound()
+  assertMayAttach(role, preview, kind, stages)
+
+  await confirmUploaded(documentId, role.id)
 
   return prisma.$transaction(async (tx) => {
     const row = await lockAndLoad(tx, code)
     if (!row) throw NotFound()
-    const submission = toDomainSubmission(row)
-    if (!isVisible(submission, role)) throw NotFound()
-
-    if (kind === 'primary') {
-      if (role.id !== row.requesterId || row.stageKey !== 'submitter') {
-        throw Forbidden('primary_document_frozen')
-      }
-    } else if (!isHolder(submission, role, stages)) {
-      throw Forbidden('not_your_desk')
-    }
+    assertMayAttach(role, row, kind, stages)
 
     // Document ids are only ever handed to the client that uploaded them (via
     // POST /documents/upload-url), so this is mainly a guard against a stale

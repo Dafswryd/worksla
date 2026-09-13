@@ -49,7 +49,7 @@ const toChecklistItem = (item: DbChecklistItem): ChecklistItem => ({ text: item.
  * relying on `row.history` arriving pre-sorted — the input order (whatever a
  * future query builder produces) never affects the result.
  */
-function activeChecklist(row: SubmissionRow): readonly DbChecklistItem[] {
+export function activeChecklist(row: SubmissionRow): readonly DbChecklistItem[] {
   if (row.status !== 'returned') return []
   const returns = row.history.filter((entry) => entry.kind === 'return')
   if (returns.length === 0) return []
