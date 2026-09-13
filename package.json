@@ -11,6 +11,11 @@
     "dev:web": "npm run dev -w @imeri/web",
     "build:web": "npm run build -w @imeri/web",
     "preview:web": "npm run preview -w @imeri/web",
-    "typecheck": "npm run typecheck -w @imeri/web"
+    "typecheck": "npm run typecheck -w @imeri/web",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
   }
 }
