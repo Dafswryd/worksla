@@ -1,13 +1,14 @@
-import type { Category, Role, Submission } from '@imeri/shared'
-import { isVisible } from '@imeri/shared'
+import type { Category, Role, Stage, Submission } from '@imeri/shared'
+import { canAdvance, isHolder, isVisible, nextStage, previousStage } from '@imeri/shared'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../../db/client'
 import { toDomainSubmission } from '../../db/toDomain'
-import { BadRequest, Forbidden, NotFound } from '../../errors'
+import type { SubmissionRow } from '../../db/toDomain'
+import { BadRequest, Conflict, Forbidden, NotFound } from '../../errors'
 import { confirmUploaded } from '../documents/service'
-import { loadRoute } from '../flowRules/repository'
+import { loadRoute, loadStages } from '../flowRules/repository'
 import { nextCode } from './code'
-import { SUBMISSION_INCLUDE, submissionRepo } from './repository'
+import { SUBMISSION_INCLUDE, lockAndLoad, submissionRepo } from './repository'
 
 /** Scope is always derived from the session — never from a request parameter. */
 export async function listVisible(role: Role): Promise<readonly Submission[]> {
@@ -126,4 +127,148 @@ export async function createSubmission(user: Role, input: CreateInput): Promise<
       if (!isCodeCollision(error) || attempt >= MAX_CODE_ATTEMPTS) throw error
     }
   }
+}
+
+const ADVANCE_ACTION: Partial<Record<string, string>> = {
+  submitter: 'mengajukan ulang setelah perbaikan',
+  secretary: 'meneruskan ke Wadir',
+  deputy: 'memberi paraf dan meneruskan ke Direktur',
+  director: 'menyetujui dan menandatangani',
+  recording: 'merekam hasil dan memberi tahu pengaju',
+}
+
+const DESK_NAME: Partial<Record<string, string>> = {
+  submitter: 'Pengaju',
+  secretary: 'Sekret',
+  deputy: 'Wadir',
+  director: 'Direktur',
+  recording: 'Sekret',
+}
+
+/**
+ * Load, lock, and run the shared rules. Every mutating action goes through here.
+ *
+ * Authorisation here is `isHolder` alone, not `isVisible` + `isHolder`. For every
+ * role branch `isHolder` implies `isVisible` (same category/cluster/requester
+ * conditions, plus the stage check) — a role holding the desk is always a role
+ * that can see the submission, so `isHolder` is already the stricter, correct
+ * gate. Layering `isVisible` in front of it would mask a genuine "not your desk"
+ * with a 404 whenever the caller's scope (e.g. a secretary's category) doesn't
+ * happen to match the submission — which is exactly the case for a secretary
+ * of one category acting on a returned submission that was routed to another
+ * category's desk. That should read as "not your desk" (403), not "not found".
+ */
+async function guarded<T>(
+  code: string,
+  role: Role,
+  run: (ctx: {
+    tx: Prisma.TransactionClient
+    row: SubmissionRow
+    submission: Submission
+    stages: readonly Stage[]
+  }) => Promise<T>,
+): Promise<T> {
+  const stages = await loadStages()
+  return prisma.$transaction(async (tx) => {
+    const row = await lockAndLoad(tx, code)
+    if (!row) throw NotFound()
+    const submission = toDomainSubmission(row)
+    if (!isHolder(submission, role, stages)) throw Forbidden('not_your_desk')
+    return run({ tx, row, submission, stages })
+  })
+}
+
+export async function advance(role: Role, code: string, note?: string): Promise<Submission> {
+  return guarded(code, role, async ({ tx, row, submission }) => {
+    if (!canAdvance(submission)) throw Conflict('checklist_open')
+
+    const from = row.stageKey
+    const to = nextStage(from)
+    const finished = to === 'done'
+
+    await tx.historyEntry.create({
+      data: {
+        submissionId: row.id,
+        actorId: role.id,
+        actorName: role.name,
+        actorPosition: role.position,
+        kind: 'approve',
+        action: ADVANCE_ACTION[from] ?? 'meneruskan berkas',
+        ...(note === undefined || note.trim() === '' ? {} : { comment: note.trim() }),
+        fromStage: from,
+        toStage: to,
+      },
+    })
+
+    await tx.submission.update({
+      where: { id: row.id },
+      data: { stageKey: to, status: finished ? 'done' : 'running', stageEnteredAt: new Date() },
+    })
+
+    // Checklist rows are deliberately NOT deleted: they belong to the return that
+    // created them. Moving to `running` is what makes them stop being active.
+
+    const fresh = await tx.submission.findUniqueOrThrow({ where: { id: row.id }, include: SUBMISSION_INCLUDE })
+    return toDomainSubmission(fresh)
+  })
+}
+
+export async function sendBack(role: Role, code: string, comment: string): Promise<Submission> {
+  const points = comment
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '')
+  if (points.length === 0) throw BadRequest('comment_required')
+
+  return guarded(code, role, async ({ tx, row }) => {
+    const from = row.stageKey
+    const to = previousStage(from)
+
+    const entry = await tx.historyEntry.create({
+      data: {
+        submissionId: row.id,
+        actorId: role.id,
+        actorName: role.name,
+        actorPosition: role.position,
+        kind: 'return',
+        action: `mengembalikan ke ${DESK_NAME[to] ?? 'meja sebelumnya'}`,
+        comment: `${points.join('. ')}.`,
+        fromStage: from,
+        toStage: to,
+      },
+    })
+
+    // Earlier rounds stay on their own return entry; this creates a new set.
+    await tx.checklistItem.createMany({
+      data: points.map((text) => ({ historyEntryId: entry.id, submissionId: row.id, text })),
+    })
+
+    await tx.submission.update({
+      where: { id: row.id },
+      data: { stageKey: to, status: 'returned', stageEnteredAt: new Date() },
+    })
+
+    const fresh = await tx.submission.findUniqueOrThrow({ where: { id: row.id }, include: SUBMISSION_INCLUDE })
+    return toDomainSubmission(fresh)
+  })
+}
+
+export async function toggleChecklistItem(
+  role: Role,
+  code: string,
+  itemId: string,
+  done: boolean,
+): Promise<Submission> {
+  return guarded(code, role, async ({ tx, row }) => {
+    const item = row.checklist.find((c) => c.id === itemId)
+    if (!item) throw NotFound()
+
+    await tx.checklistItem.update({
+      where: { id: itemId },
+      data: { done, doneAt: done ? new Date() : null, doneById: done ? role.id : null },
+    })
+
+    const fresh = await tx.submission.findUniqueOrThrow({ where: { id: row.id }, include: SUBMISSION_INCLUDE })
+    return toDomainSubmission(fresh)
+  })
 }
