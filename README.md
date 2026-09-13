@@ -27,13 +27,39 @@ from `apps/web/src/constants`. Connecting the two is a separate phase; see
 
 ## Running
 
+The interface alone needs nothing but `npm install` — it still reads its local
+seed:
+
 ```bash
 npm install
-npm run dev             # api + web together (see apps/api/README.md for setup)
 npm run dev:web         # http://localhost:5173
-npm run typecheck
-npm run build:web
 ```
+
+The backend needs Postgres and MinIO running, a `.env`, and a migrated
+database. Without all three, `npm run dev` starts the web server and the API
+exits immediately:
+
+```bash
+docker compose up -d                    # Postgres :5432, MinIO :9000 (console :9001)
+cp apps/api/.env.example apps/api/.env
+npm install
+npm run db:migrate -w @imeri/api
+npm run db:seed    -w @imeri/api        # dev accounts, password printed by the script
+npm run dev                             # api :4000 + web :5173 together
+```
+
+Checks:
+
+```bash
+npm test                  # packages/shared — pure flow rules, no services needed
+npm test -w @imeri/api    # apps/api — needs docker compose up and apps/api/.env
+npm run typecheck         # web + api
+npm run build:web
+npm run build -w @imeri/api
+```
+
+The two test commands are separate suites and neither runs the other; run both
+when verifying a change. See `apps/api/README.md` for the backend in detail.
 
 ## Roles you can try
 

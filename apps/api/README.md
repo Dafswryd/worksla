@@ -35,9 +35,17 @@ buttons in the browser are the ones that reject requests in the API.
 `Document` rows stuck in `pending` for more than 24 hours — the trace left
 behind when a user closes the tab mid-upload, after a presigned URL was
 issued but before the confirm step ever ran — deleting the storage object
-first and the row second. The same interval also sweeps expired `Session`
-rows via `authRepo.deleteExpired`; this is routine hygiene, not a security
-boundary, since every session read already re-checks expiry on the spot.
+first and the row second.
+
+If the object delete fails, the row is **kept** and the sweep moves on: the row
+is the only record of the storage key, so dropping it would leave the object in
+the bucket with nothing left to retry it. The next hourly pass tries again, and
+the failure is logged. The count the function returns is objects actually
+removed, not candidates found.
+
+The same interval also sweeps expired `Session` rows via
+`authRepo.deleteExpired`; this is routine hygiene, not a security boundary,
+since every session read already re-checks expiry on the spot.
 
 ## Tests
 
@@ -57,6 +65,13 @@ needs Docker and its own `.env`. Run both when verifying a change:
 
 ## Known gaps
 
+- **Submission code numbers are not contiguous.** `nextCode` allocates from
+  `CodeCounter` in its own small transaction, deliberately separate from the
+  write that follows (see the comment on `createSubmission`), so a create that
+  fails afterwards — an unowned document id, an attachment already claimed —
+  burns the number it was given. Nothing reuses it. Codes stay unique and
+  increasing; they just skip. Anyone counting documents by subtracting two code
+  numbers will be wrong.
 - `avgDays` on the workload board is always 0; computing it needs per-staff
   deltas between consecutive history entries, and nothing decides on it yet.
 - No notifications of any kind. A document can sit on someone's desk for days
