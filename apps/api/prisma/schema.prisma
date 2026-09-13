@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleType {
+  submitter
+  secretary
+  deputy
+  director
+  admin
+  monitor
+}
+
+enum Category {
+  finance
+  personnel
+  general
+}
+
+enum SubmissionStatus {
+  running
+  returned
+  done
+}
+
+enum StageKey {
+  submitter
+  secretary
+  deputy
+  director
+  recording
+  done
+}
+
+enum TrailKind {
+  submit
+  approve
+  return
+}
+
+enum Cluster {
+  HCRC
+  MedTech
+  StemCell
+  DrugDevelopment
+}
+
+enum DocumentKind {
+  primary
+  supporting
+}
+
+enum DocumentStatus {
+  pending
+  ready
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  type         RoleType
+  position     String
+  initials     String
+  category     Category?
+  cluster      Cluster?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+
+  submitted        Submission[]    @relation("requester")
+  assigned         Submission[]    @relation("assignedSecretary")
+  sessions         Session[]
+  historyEntries   HistoryEntry[]
+  uploads          Document[]
+  checklistClosed  ChecklistItem[]
+  stageRules       StageRule[]
+  categoryRoutes   CategoryRoute[]
+}
+
+model Submission {
+  id                  String           @id @default(cuid())
+  code                String           @unique
+  title               String
+  summary             String?
+  requesterId         String
+  assignedSecretaryId String
+  cluster             Cluster
+  category            Category
+  stageKey            StageKey
+  status              SubmissionStatus
+  stageEnteredAt      DateTime
+  createdAt           DateTime         @default(now())
+
+  requester          User            @relation("requester", fields: [requesterId], references: [id])
+  assignedSecretary  User            @relation("assignedSecretary", fields: [assignedSecretaryId], references: [id])
+  documents          Document[]
+  history            HistoryEntry[]
+  checklist          ChecklistItem[]
+
+  @@index([assignedSecretaryId, status])
+  @@index([cluster, status])
+  @@index([requesterId, status])
+}
+
+model Document {
+  id             String         @id @default(cuid())
+  submissionId   String?
+  kind           DocumentKind
+  lineageId      String
+  version        Int
+  isCurrent      Boolean        @default(true)
+  name           String
+  contentType    String
+  sizeBytes      Int
+  storageKey     String         @unique
+  status         DocumentStatus @default(pending)
+  uploadedById   String
+  historyEntryId String?
+  createdAt      DateTime       @default(now())
+
+  submission   Submission?   @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  uploadedBy   User          @relation(fields: [uploadedById], references: [id])
+  historyEntry HistoryEntry? @relation(fields: [historyEntryId], references: [id])
+
+  @@unique([lineageId, version])
+  @@index([submissionId, kind, isCurrent])
+  @@index([status, createdAt])
+}
+
+model HistoryEntry {
+  id            String     @id @default(cuid())
+  submissionId  String
+  actorId       String
+  actorName     String
+  actorPosition String
+  kind          TrailKind
+  action        String
+  comment       String?
+  fromStage     StageKey
+  toStage       StageKey
+  createdAt     DateTime   @default(now())
+
+  submission Submission      @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  actor      User            @relation(fields: [actorId], references: [id])
+  checklist  ChecklistItem[]
+  documents  Document[]
+
+  @@index([submissionId, createdAt])
+}
+
+model ChecklistItem {
+  id             String    @id @default(cuid())
+  historyEntryId String
+  submissionId   String
+  text           String
+  done           Boolean   @default(false)
+  doneAt         DateTime?
+  doneById       String?
+
+  historyEntry HistoryEntry @relation(fields: [historyEntryId], references: [id], onDelete: Cascade)
+  submission   Submission   @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  doneBy       User?        @relation(fields: [doneById], references: [id])
+
+  @@index([submissionId, done])
+}
+
+model StageRule {
+  stageKey    StageKey @id
+  slaDays     Int?
+  updatedAt   DateTime @updatedAt
+  updatedById String
+
+  updatedBy User @relation(fields: [updatedById], references: [id])
+}
+
+model CategoryRoute {
+  category    Category @id
+  secretaryId String
+  updatedAt   DateTime @updatedAt
+  updatedById String
+
+  updatedBy User @relation(fields: [updatedById], references: [id])
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  userAgent String?
+  ip        String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model CodeCounter {
+  prefix     String
+  period     String
+  lastNumber Int
+
+  @@id([prefix, period])
+}
