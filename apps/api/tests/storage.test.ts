@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildStorageKey } from '../src/modules/documents/service'
-import { s3Store } from '../src/storage/s3Store'
+import { s3Store, sanitizeFilenameForDisposition } from '../src/storage/s3Store'
 
 describe('buildStorageKey', () => {
   it('membersihkan nama berkas dan menyisipkan uuid', () => {
@@ -15,6 +15,21 @@ describe('buildStorageKey', () => {
 
   it('dua berkas bernama sama menghasilkan kunci berbeda', () => {
     expect(buildStorageKey('a.pdf')).not.toBe(buildStorageKey('a.pdf'))
+  })
+})
+
+describe('sanitizeFilenameForDisposition', () => {
+  it('membuang CR, LF, kutip, dan backslash agar tak bisa menyuntik header', () => {
+    // This is exactly what the old `.replace(/"/g, '')`-only implementation
+    // failed to catch: the quote is stripped but \r\n survive untouched,
+    // which is enough to inject an extra header/query value into the signed
+    // response-content-disposition. This test must fail against that old
+    // implementation.
+    const injected = 'nota\r\nX-Injected: 1".pdf'
+    const result = sanitizeFilenameForDisposition(injected)
+
+    expect(result).not.toMatch(/[\r\n"\\]/)
+    expect(result).toBe('notaX-Injected: 1.pdf')
   })
 })
 

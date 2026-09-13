@@ -11,6 +11,21 @@ import type { FileStore } from './FileStore'
 
 const UPLOAD_TTL = 300
 
+/**
+ * Strips control characters (CR, LF, and the rest of the C0/C1 ranges), double
+ * quotes, and backslashes before a filename is interpolated into the
+ * Content-Disposition header value we sign into the download URL.
+ *
+ * Callers should already reject these characters at the API boundary (see
+ * uploadInput in modules/documents/routes.ts), but a Document row written
+ * before that validation existed — or reached by any other path — must not be
+ * able to smuggle a header/query injection through here. This layer stands on
+ * its own and never trusts that the caller validated.
+ */
+export function sanitizeFilenameForDisposition(filename: string): string {
+  return filename.replace(/[\x00-\x1f\x7f"\\]/g, '')
+}
+
 const client = new S3Client({
   region: env.S3_REGION,
   forcePathStyle: env.S3_FORCE_PATH_STYLE,
@@ -32,7 +47,7 @@ export const s3Store: FileStore = {
     const command = new GetObjectCommand({
       Bucket: env.S3_BUCKET,
       Key: key,
-      ResponseContentDisposition: `attachment; filename="${filename.replace(/"/g, '')}"`,
+      ResponseContentDisposition: `attachment; filename="${sanitizeFilenameForDisposition(filename)}"`,
     })
     return getSignedUrl(client, command, { expiresIn: ttlSeconds })
   },
