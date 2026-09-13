@@ -8,6 +8,7 @@ import { authRoutes } from './modules/auth/routes'
 import { documentRoutes } from './modules/documents/routes'
 import { flowRuleRoutes } from './modules/flowRules/routes'
 import { submissionRoutes } from './modules/submissions/routes'
+import { staffRoutes, userRoutes } from './modules/users/routes'
 
 export function createApp(): express.Express {
   const app = express()
@@ -24,6 +25,8 @@ export function createApp(): express.Express {
   app.use('/submissions', submissionRoutes)
   app.use('/documents', documentRoutes)
   app.use('/flow-rules', flowRuleRoutes)
+  app.use('/users', userRoutes)
+  app.use('/staff', staffRoutes)
 
   app.use((_req, _res, next) => next(NotFound()))
   app.use(errorHandler)
