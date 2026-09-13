@@ -1,6 +1,6 @@
 import type { Cluster, ClusterStat, DailyPoint, Staff } from '@/types'
 
-export const ALL_CLUSTERS: readonly Cluster[] = ['HCRC', 'MedTech', 'Stem Cell', 'Drug Development']
+export const ALL_CLUSTERS: readonly Cluster[] = ['HCRC', 'MedTech', 'StemCell', 'DrugDevelopment']
 
 /**
  * Staff list for the workload board. `avgDays` and `completed30` summarise the
@@ -10,12 +10,12 @@ export const ALL_CLUSTERS: readonly Cluster[] = ['HCRC', 'MedTech', 'Stem Cell',
 export const STAFF: readonly Staff[] = [
   { name: 'Rina Kartika', type: 'submitter', position: 'Pengaju', scope: 'HCRC', avgDays: 0.9, completed30: 7 },
   { name: 'Andi Prasetyo', type: 'submitter', position: 'Pengaju', scope: 'MedTech', avgDays: 1.4, completed30: 9 },
-  { name: 'Lestari Ayu', type: 'submitter', position: 'Pengaju', scope: 'Stem Cell', avgDays: 0.7, completed30: 5 },
+  { name: 'Lestari Ayu', type: 'submitter', position: 'Pengaju', scope: 'StemCell', avgDays: 0.7, completed30: 5 },
   {
     name: 'Dimas Saputra',
     type: 'submitter',
     position: 'Pengaju',
-    scope: 'Drug Development',
+    scope: 'DrugDevelopment',
     avgDays: 1.1,
     completed30: 6,
   },
@@ -50,8 +50,8 @@ export const STAFF: readonly Staff[] = [
 export const CLUSTER_STATS: Readonly<Record<Cluster, ClusterStat>> = {
   HCRC: { avgDays: 5.2, completed30: 14, headcount: 9 },
   MedTech: { avgDays: 6.8, completed30: 11, headcount: 12 },
-  'Stem Cell': { avgDays: 4.6, completed30: 8, headcount: 7 },
-  'Drug Development': { avgDays: 3.9, completed30: 6, headcount: 5 },
+  StemCell: { avgDays: 4.6, completed30: 8, headcount: 7 },
+  DrugDevelopment: { avgDays: 3.9, completed30: 6, headcount: 5 },
 }
 
 /** Movement over the last 14 days: [date, documents in, documents completed]. */

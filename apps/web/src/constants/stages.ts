@@ -1,17 +1,27 @@
+import { STAGE_ORDER } from '@imeri/shared'
 import type { Stage, StageKey } from '@/types'
 
-/**
- * The six stages a document passes through. The `sla` numbers are starting
- * values — the super admin can change them at runtime through `flowAtom`.
- */
-export const DEFAULT_STAGES: readonly Stage[] = [
-  { key: 'submitter', desk: 'Pengaju', action: 'Penyusunan berkas', sla: null },
-  { key: 'secretary', desk: 'Sekret', action: 'Verifikasi berkas', sla: 1 },
-  { key: 'deputy', desk: 'Wadir', action: 'QC & paraf', sla: 2 },
-  { key: 'director', desk: 'Direktur', action: 'Persetujuan', sla: 2 },
-  { key: 'recording', desk: 'Sekret', action: 'Rekam & arsip', sla: 1 },
-  { key: 'done', desk: 'Pengaju', action: 'Selesai', sla: null },
-]
+/** Indonesian screen labels for each desk. Never leaves the browser. */
+export const STAGE_LABEL: Readonly<Record<StageKey, { desk: string; action: string }>> = {
+  submitter: { desk: 'Pengaju', action: 'Penyusunan berkas' },
+  secretary: { desk: 'Sekret', action: 'Verifikasi berkas' },
+  deputy: { desk: 'Wadir', action: 'QC & paraf' },
+  director: { desk: 'Direktur', action: 'Persetujuan' },
+  recording: { desk: 'Sekret', action: 'Rekam & arsip' },
+  done: { desk: 'Pengaju', action: 'Selesai' },
+}
+
+const DEFAULT_SLA: Readonly<Record<StageKey, number | null>> = {
+  submitter: null,
+  secretary: 1,
+  deputy: 2,
+  director: 2,
+  recording: 1,
+  done: null,
+}
+
+/** Starting rules; the super admin can change the SLA at runtime via flowAtom. */
+export const DEFAULT_STAGES: readonly Stage[] = STAGE_ORDER.map((key) => ({ key, sla: DEFAULT_SLA[key] }))
 
 /** "Move forward" button label per stage. */
 export const ADVANCE_LABEL: Partial<Record<StageKey, string>> = {

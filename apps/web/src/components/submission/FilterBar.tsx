@@ -1,7 +1,7 @@
 import { useAtom, useSetAtom } from 'jotai'
 import { Chip } from '@/components/Chip'
 import { Icon } from '@/components/Icon'
-import { CATEGORY_LABEL } from '@/constants/labels'
+import { CATEGORY_LABEL, CLUSTER_LABEL } from '@/constants/labels'
 import { ALL_CLUSTERS } from '@/constants/staff'
 import { ALL_CATEGORIES } from '@/constants/roles'
 import { filtersAtom, searchAtom } from '@/stores/uiAtom'
@@ -54,7 +54,7 @@ export function FilterBar({ role }: FilterBarProps) {
         <option value="all">Semua cluster</option>
         {ALL_CLUSTERS.map((cluster) => (
           <option value={cluster} key={cluster}>
-            {cluster}
+            {CLUSTER_LABEL[cluster]}
           </option>
         ))}
       </select>
@@ -65,7 +65,9 @@ export function FilterBar({ role }: FilterBarProps) {
           &nbsp; Terkunci ke kategori {role.category ? CATEGORY_LABEL[role.category] : ''}
         </Chip>
       ) : null}
-      {clusterLocked ? <Chip tone="blue">Terkunci ke Cluster {role.cluster}</Chip> : null}
+      {clusterLocked ? (
+        <Chip tone="blue">Terkunci ke Cluster {role.cluster ? CLUSTER_LABEL[role.cluster] : ''}</Chip>
+      ) : null}
 
       <button
         type="button"

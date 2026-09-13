@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useAtomValue } from 'jotai'
-import { canAdvance, checklistCleared, isHolder, isOverdue, stageAt } from '@imeri/shared'
+import { canAdvance, checklistCleared, isHolder, isOverdue, stageByKey, stageIndexOf } from '@imeri/shared'
 import { Chip, StatusChip } from '@/components/Chip'
 import { Icon } from '@/components/Icon'
-import { CATEGORY_LABEL } from '@/constants/labels'
+import { CATEGORY_LABEL, CLUSTER_LABEL } from '@/constants/labels'
 import { roleById } from '@/constants/roles'
-import { ADVANCE_LABEL, RETURN_LABEL } from '@/constants/stages'
+import { ADVANCE_LABEL, RETURN_LABEL, STAGE_LABEL } from '@/constants/stages'
 import { holderOf } from '@/helpers/monitoring'
 import { flowAtom } from '@/stores/flowAtom'
 import { useFlowActions } from '@/stores/submissionAtom'
@@ -28,12 +28,14 @@ function StageTimeline({
   readonly stages: readonly Stage[]
 }) {
   const overdue = isOverdue(submission, stages)
+  const currentIndex = stageIndexOf(submission.stageKey)
 
   return (
     <ul className="vtl">
       {stages.map((stage, index) => {
-        const passed = submission.status === 'done' || index < submission.stageIndex
-        const current = index === submission.stageIndex && submission.status !== 'done'
+        const stageIndex = stageIndexOf(stage.key)
+        const passed = submission.status === 'done' || stageIndex < currentIndex
+        const current = stageIndex === currentIndex && submission.status !== 'done'
         const className = passed
           ? 'done'
           : current
@@ -70,8 +72,8 @@ function StageTimeline({
               )}
             </span>
             <span className="vtl-body">
-              <span className="vtl-who">{stage.desk}</span>
-              <span className="vtl-what">{stage.action}</span>
+              <span className="vtl-who">{STAGE_LABEL[stage.key].desk}</span>
+              <span className="vtl-what">{STAGE_LABEL[stage.key].action}</span>
               <span className="vtl-when">{note}</span>
             </span>
           </li>
@@ -98,7 +100,7 @@ export function SubmissionDrawer({ submission, onClose }: SubmissionDrawerProps)
 
   const holding = isHolder(submission, role, stages)
   const holder = holderOf(submission, stages, route)
-  const stage = stageAt(stages, submission.stageIndex)
+  const stage = stageByKey(stages, submission.stageKey)
   const advanceLabel = ADVANCE_LABEL[stage.key]
   const returnLabel = RETURN_LABEL[stage.key]
   const locked = !canAdvance(submission)
@@ -116,7 +118,7 @@ export function SubmissionDrawer({ submission, onClose }: SubmissionDrawerProps)
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 9 }}>
               <StatusChip submission={submission} stages={stages} />
               <Chip tone="purple">{CATEGORY_LABEL[submission.category]}</Chip>
-              <Chip>Cluster {submission.cluster}</Chip>
+              <Chip>Cluster {CLUSTER_LABEL[submission.cluster]}</Chip>
             </div>
           </div>
           <button type="button" className="icon-btn" aria-label="Tutup" onClick={onClose}>

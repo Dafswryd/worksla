@@ -1,6 +1,7 @@
 import { useAtomValue } from 'jotai'
-import { overdueDays, stageAt } from '@imeri/shared'
+import { overdueDays } from '@imeri/shared'
 import { Chip } from '@/components/Chip'
+import { STAGE_LABEL } from '@/constants/stages'
 import { holderOf } from '@/helpers/monitoring'
 import { flowAtom } from '@/stores/flowAtom'
 import type { Submission } from '@/types'
@@ -34,7 +35,7 @@ export function Overdue({ list, onOpen }: OverdueProps) {
               <span className="p-text">
                 <span className="p-title">{submission.title}</span>
                 <span className="p-code num">
-                  {holder.name} · {stageAt(stages, submission.stageIndex).desk}
+                  {holder.name} · {STAGE_LABEL[submission.stageKey].desk}
                 </span>
               </span>
             </span>

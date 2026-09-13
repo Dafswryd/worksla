@@ -12,10 +12,10 @@ export function Backlog({ rows }: { readonly rows: readonly BacklogRow[] }) {
     <>
       <div className="bn-list">
         {rows.map((item) => (
-          <div className="bn-row" key={`${item.stage.key}-${item.index}`}>
+          <div className="bn-row" key={item.stage.key}>
             <span className="bn-name">
-              {item.stage.desk}
-              <small>{item.stage.action}</small>
+              {item.desk}
+              <small>{item.action}</small>
             </span>
             <span
               className="bn-bar"

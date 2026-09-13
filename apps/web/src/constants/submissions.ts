@@ -1,4 +1,5 @@
-import type { Attachment, Category, Cluster, Submission, TrailEntry } from '@/types'
+import { stageIndexOf } from '@imeri/shared'
+import type { Attachment, Category, Cluster, StageKey, Submission, TrailEntry } from '@/types'
 import { DEFAULT_ROUTE, ROLES, roleById } from './roles'
 
 const doc = (name: string, size: string): Attachment => ({
@@ -17,7 +18,7 @@ const DETAILED: readonly Submission[] = [
     cluster: 'MedTech',
     category: 'finance',
     createdAt: '9 Sep 2026',
-    stageIndex: 2,
+    stageKey: 'deputy',
     daysInStage: 2,
     status: 'running',
     attachments: [
@@ -46,7 +47,7 @@ const DETAILED: readonly Submission[] = [
     cluster: 'HCRC',
     category: 'finance',
     createdAt: '2 Sep 2026',
-    stageIndex: 3,
+    stageKey: 'director',
     daysInStage: 4,
     status: 'running',
     attachments: [
@@ -84,7 +85,7 @@ const DETAILED: readonly Submission[] = [
     cluster: 'HCRC',
     category: 'personnel',
     createdAt: '11 Sep 2026',
-    stageIndex: 0,
+    stageKey: 'submitter',
     daysInStage: 1,
     status: 'returned',
     attachments: [doc('Form permohonan cuti.pdf', '58 KB'), doc('Rencana serah terima pekerjaan.pdf', '71 KB')],
@@ -114,7 +115,7 @@ const DETAILED: readonly Submission[] = [
     cluster: 'HCRC',
     category: 'finance',
     createdAt: '11 Sep 2026',
-    stageIndex: 1,
+    stageKey: 'secretary',
     daysInStage: 1,
     status: 'running',
     attachments: [
@@ -132,10 +133,10 @@ const DETAILED: readonly Submission[] = [
     title: 'Usulan mutasi analis laboratorium',
     requester: 'Lestari Ayu',
     requesterId: 'lestari',
-    cluster: 'Stem Cell',
+    cluster: 'StemCell',
     category: 'personnel',
     createdAt: '10 Sep 2026',
-    stageIndex: 2,
+    stageKey: 'deputy',
     daysInStage: 1,
     status: 'running',
     attachments: [
@@ -165,7 +166,7 @@ const DETAILED: readonly Submission[] = [
     cluster: 'HCRC',
     category: 'general',
     createdAt: '10 Sep 2026',
-    stageIndex: 1,
+    stageKey: 'secretary',
     daysInStage: 2,
     status: 'running',
     attachments: [doc('Laporan kerusakan unit.pdf', '144 KB'), doc('Penawaran servis vendor.pdf', '226 KB')],
@@ -182,7 +183,7 @@ const DETAILED: readonly Submission[] = [
     cluster: 'MedTech',
     category: 'general',
     createdAt: '4 Sep 2026',
-    stageIndex: 4,
+    stageKey: 'recording',
     daysInStage: 1,
     status: 'running',
     attachments: [
@@ -221,10 +222,10 @@ const DETAILED: readonly Submission[] = [
     title: 'Langganan lisensi perangkat lunak statistik',
     requester: 'Dimas Saputra',
     requesterId: 'dimas',
-    cluster: 'Drug Development',
+    cluster: 'DrugDevelopment',
     category: 'finance',
     createdAt: '21 Agu 2026',
-    stageIndex: 5,
+    stageKey: 'done',
     daysInStage: 0,
     status: 'done',
     attachments: [
@@ -283,7 +284,7 @@ const COMMON_ATTACHMENTS: Readonly<Record<Category, readonly string[]>> = {
 function autoHistory(
   requester: string,
   category: Category,
-  stageIndex: number,
+  stageKey: StageKey,
   status: Submission['status'],
   time: string,
 ): readonly TrailEntry[] {
@@ -303,7 +304,7 @@ function autoHistory(
     })
     return trail
   }
-  if (stageIndex >= 2) {
+  if (stageIndexOf(stageKey) >= 2) {
     trail.push({
       actor: secretary.name,
       role: secretary.position,
@@ -312,7 +313,7 @@ function autoHistory(
       kind: 'approve',
     })
   }
-  if (stageIndex >= 3) {
+  if (stageIndexOf(stageKey) >= 3) {
     trail.push({
       actor: ROLES['hendra']?.name ?? 'Wadir',
       role: 'Wadir',
@@ -321,7 +322,7 @@ function autoHistory(
       kind: 'approve',
     })
   }
-  if (stageIndex >= 4) {
+  if (stageIndexOf(stageKey) >= 4) {
     trail.push({
       actor: ROLES['ratna']?.name ?? 'Direktur',
       role: 'Direktur',
@@ -330,7 +331,7 @@ function autoHistory(
       kind: 'approve',
     })
   }
-  if (stageIndex >= 5) {
+  if (stageIndexOf(stageKey) >= 5) {
     trail.push({
       actor: secretary.name,
       role: secretary.position,
@@ -351,7 +352,7 @@ function make(
   cluster: Cluster,
   category: Category,
   createdAt: string,
-  stageIndex: number,
+  stageKey: StageKey,
   daysInStage: number,
   status: Submission['status'],
   attachmentCount: number,
@@ -364,7 +365,7 @@ function make(
     cluster,
     category,
     createdAt,
-    stageIndex,
+    stageKey,
     daysInStage,
     status,
     attachments: COMMON_ATTACHMENTS[category]
@@ -377,23 +378,23 @@ function make(
             { text: 'Perbaiki rincian yang tidak sesuai', done: false },
           ]
         : [],
-    history: autoHistory(requester, category, stageIndex, status, createdAt),
+    history: autoHistory(requester, category, stageKey, status, createdAt),
   }
 }
 
 const GENERATED: readonly Submission[] = [
-  make('PJK-2609-011', 'Kalibrasi tahunan mikroskop konfokal', 'Dimas Saputra', 'dimas', 'Drug Development', 'finance', '8 Sep 2026', 2, 3, 'running', 3),
-  make('PJK-2609-006', 'Pemeliharaan kendaraan operasional spesimen', 'Andi Prasetyo', 'andi', 'MedTech', 'finance', '5 Sep 2026', 4, 1, 'running', 4),
-  make('PJP-2609-015', 'Usulan kenaikan jenjang jabatan peneliti', 'Lestari Ayu', 'lestari', 'Stem Cell', 'personnel', '9 Sep 2026', 1, 1, 'running', 3),
-  make('PJP-2609-019', 'Permohonan izin belajar', 'Dimas Saputra', 'dimas', 'Drug Development', 'personnel', '10 Sep 2026', 0, 2, 'returned', 2),
-  make('PJU-2609-022', 'Penggantian lampu koridor laboratorium', 'Andi Prasetyo', 'andi', 'MedTech', 'general', '10 Sep 2026', 1, 3, 'running', 2),
-  make('PJU-2609-027', 'Sewa tenda kegiatan bakti kesehatan', 'Rina Kartika', 'rina', 'HCRC', 'general', '9 Sep 2026', 2, 2, 'running', 3),
-  make('PJU-2609-012', 'Perbaikan pintu ruang penyimpanan spesimen', 'Andi Prasetyo', 'andi', 'MedTech', 'general', '8 Sep 2026', 3, 3, 'running', 2),
-  make('PJK-2609-002', 'Konsumsi rapat koordinasi peneliti', 'Rina Kartika', 'rina', 'HCRC', 'finance', '1 Sep 2026', 5, 0, 'done', 3),
-  make('PJP-2609-005', 'Mutasi internal staf laboratorium', 'Dimas Saputra', 'dimas', 'Drug Development', 'personnel', '3 Sep 2026', 5, 0, 'done', 3),
-  make('PJK-2608-088', 'Pengadaan freezer penyimpanan −80°C', 'Andi Prasetyo', 'andi', 'MedTech', 'finance', '18 Agu 2026', 5, 0, 'done', 4),
-  make('PJP-2608-091', 'Perpanjangan kontrak tenaga alih daya', 'Lestari Ayu', 'lestari', 'Stem Cell', 'personnel', '19 Agu 2026', 5, 0, 'done', 4),
-  make('PJU-2608-094', 'Pengecatan ulang koridor laboratorium', 'Rina Kartika', 'rina', 'HCRC', 'general', '20 Agu 2026', 5, 0, 'done', 3),
+  make('PJK-2609-011', 'Kalibrasi tahunan mikroskop konfokal', 'Dimas Saputra', 'dimas', 'DrugDevelopment', 'finance', '8 Sep 2026', 'deputy', 3, 'running', 3),
+  make('PJK-2609-006', 'Pemeliharaan kendaraan operasional spesimen', 'Andi Prasetyo', 'andi', 'MedTech', 'finance', '5 Sep 2026', 'recording', 1, 'running', 4),
+  make('PJP-2609-015', 'Usulan kenaikan jenjang jabatan peneliti', 'Lestari Ayu', 'lestari', 'StemCell', 'personnel', '9 Sep 2026', 'secretary', 1, 'running', 3),
+  make('PJP-2609-019', 'Permohonan izin belajar', 'Dimas Saputra', 'dimas', 'DrugDevelopment', 'personnel', '10 Sep 2026', 'submitter', 2, 'returned', 2),
+  make('PJU-2609-022', 'Penggantian lampu koridor laboratorium', 'Andi Prasetyo', 'andi', 'MedTech', 'general', '10 Sep 2026', 'secretary', 3, 'running', 2),
+  make('PJU-2609-027', 'Sewa tenda kegiatan bakti kesehatan', 'Rina Kartika', 'rina', 'HCRC', 'general', '9 Sep 2026', 'deputy', 2, 'running', 3),
+  make('PJU-2609-012', 'Perbaikan pintu ruang penyimpanan spesimen', 'Andi Prasetyo', 'andi', 'MedTech', 'general', '8 Sep 2026', 'director', 3, 'running', 2),
+  make('PJK-2609-002', 'Konsumsi rapat koordinasi peneliti', 'Rina Kartika', 'rina', 'HCRC', 'finance', '1 Sep 2026', 'done', 0, 'done', 3),
+  make('PJP-2609-005', 'Mutasi internal staf laboratorium', 'Dimas Saputra', 'dimas', 'DrugDevelopment', 'personnel', '3 Sep 2026', 'done', 0, 'done', 3),
+  make('PJK-2608-088', 'Pengadaan freezer penyimpanan −80°C', 'Andi Prasetyo', 'andi', 'MedTech', 'finance', '18 Agu 2026', 'done', 0, 'done', 4),
+  make('PJP-2608-091', 'Perpanjangan kontrak tenaga alih daya', 'Lestari Ayu', 'lestari', 'StemCell', 'personnel', '19 Agu 2026', 'done', 0, 'done', 4),
+  make('PJU-2608-094', 'Pengecatan ulang koridor laboratorium', 'Rina Kartika', 'rina', 'HCRC', 'general', '20 Agu 2026', 'done', 0, 'done', 3),
 ]
 
 export const SUBMISSION_SEED: readonly Submission[] = [...DETAILED, ...GENERATED]

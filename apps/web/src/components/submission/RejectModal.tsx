@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useAtomValue } from 'jotai'
-import { stageAt } from '@imeri/shared'
+import { previousStage } from '@imeri/shared'
 import { Icon } from '@/components/Icon'
 import { roleById } from '@/constants/roles'
+import { STAGE_LABEL } from '@/constants/stages'
 import { flowAtom } from '@/stores/flowAtom'
 import type { StageKey, Submission } from '@/types'
 
@@ -26,9 +27,9 @@ function recipient(submission: Submission, targetKey: StageKey, secretaryId: str
 }
 
 export function RejectModal({ submission, onCancel, onSubmit }: RejectModalProps) {
-  const { stages, route } = useAtomValue(flowAtom)
+  const { route } = useAtomValue(flowAtom)
   const [comment, setComment] = useState(SAMPLE)
-  const target = stageAt(stages, submission.stageIndex - 1)
+  const target = previousStage(submission.stageKey)
 
   return (
     <div className="modal" role="dialog" aria-modal="true" aria-label="Kembalikan pengajuan">
@@ -37,7 +38,7 @@ export function RejectModal({ submission, onCancel, onSubmit }: RejectModalProps
           <span className="modal-ico danger">
             <Icon name="rotateBack" size={16} strokeWidth={2} />
           </span>
-          <span className="modal-title">Kembalikan ke {target.desk}</span>
+          <span className="modal-title">Kembalikan ke {STAGE_LABEL[target].desk}</span>
           <button type="button" className="icon-btn" aria-label="Tutup" onClick={onCancel}>
             <Icon name="close" size={16} strokeWidth={2} />
           </button>
@@ -59,7 +60,7 @@ export function RejectModal({ submission, onCancel, onSubmit }: RejectModalProps
 
           <div className="route-note">
             <Icon name="arrowRight" size={15} strokeWidth={2} />
-            Berkas mundur satu langkah ke {recipient(submission, target.key, route[submission.category])} — bukan
+            Berkas mundur satu langkah ke {recipient(submission, target, route[submission.category])} — bukan
             kembali ke awal.
           </div>
         </div>

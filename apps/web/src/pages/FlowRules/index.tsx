@@ -4,6 +4,7 @@ import { Chip } from '@/components/Chip'
 import { Icon } from '@/components/Icon'
 import { CATEGORY_LABEL } from '@/constants/labels'
 import { ALL_CATEGORIES, ROLES, roleById } from '@/constants/roles'
+import { STAGE_LABEL } from '@/constants/stages'
 import { flowAtom, setCategoryRoute, setStageSla } from '@/stores/flowAtom'
 import { activeRoleAtom } from '@/stores/sessionAtom'
 import { useToast } from '@/stores/toastAtom'
@@ -49,7 +50,7 @@ export default function FlowRules() {
                 stage.sla === null ? null : (
                   <div className="rule-row" key={`${stage.key}-${index}`}>
                     <span className="rule-name">
-                      {stage.desk} — {stage.action}
+                      {STAGE_LABEL[stage.key].desk} — {STAGE_LABEL[stage.key].action}
                       <small>Tahap {index} dari {flow.stages.length - 1}</small>
                     </span>
                     <input
@@ -57,13 +58,13 @@ export default function FlowRules() {
                       min={1}
                       max={14}
                       value={stage.sla}
-                      aria-label={`Batas hari ${stage.action}`}
+                      aria-label={`Batas hari ${STAGE_LABEL[stage.key].action}`}
                       onChange={(event) => {
                         const days = Number(event.target.value)
                         if (Number.isNaN(days)) return
                         setFlow((prev) => setStageSla(prev, index, days))
                       }}
-                      onBlur={() => toast(`Batas ${stage.desk} — ${stage.action} disimpan`)}
+                      onBlur={() => toast(`Batas ${STAGE_LABEL[stage.key].desk} — ${STAGE_LABEL[stage.key].action} disimpan`)}
                     />
                   </div>
                 ),

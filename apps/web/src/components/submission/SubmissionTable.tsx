@@ -1,7 +1,8 @@
 import { useAtomValue } from 'jotai'
-import { isOverdue, stageAt } from '@imeri/shared'
+import { isOverdue, stageByKey } from '@imeri/shared'
 import { Chip, StatusChip } from '@/components/Chip'
-import { CATEGORY_LABEL } from '@/constants/labels'
+import { CATEGORY_LABEL, CLUSTER_LABEL } from '@/constants/labels'
+import { STAGE_LABEL } from '@/constants/stages'
 import { holderOf } from '@/helpers/monitoring'
 import { flowAtom } from '@/stores/flowAtom'
 import type { Stage, Submission } from '@/types'
@@ -17,7 +18,7 @@ interface SubmissionTableProps {
 function SlaCell({ submission, stages }: { readonly submission: Submission; readonly stages: readonly Stage[] }) {
   if (submission.status === 'done') return <span className="p-cell">—</span>
 
-  const { sla } = stageAt(stages, submission.stageIndex)
+  const { sla } = stageByKey(stages, submission.stageKey)
   if (sla === null) return <span className="p-cell num">di pengaju</span>
 
   const tone = submission.daysInStage > sla ? 'amber' : submission.daysInStage === sla ? 'slate' : 'green'
@@ -74,14 +75,14 @@ export function SubmissionTable({ list, activeCode, onOpen, emptyText }: Submiss
 
               <span className="p-cell col-kat">
                 {CATEGORY_LABEL[submission.category]}
-                <small>Cluster {submission.cluster}</small>
+                <small>Cluster {CLUSTER_LABEL[submission.cluster]}</small>
               </span>
 
               <span className="p-pos">
                 <span className="p-pos-av">{holder.initials}</span>
                 <span className="p-cell">
                   {holder.name}
-                  <small>{stageAt(stages, submission.stageIndex).action}</small>
+                  <small>{STAGE_LABEL[submission.stageKey].action}</small>
                 </span>
               </span>
 

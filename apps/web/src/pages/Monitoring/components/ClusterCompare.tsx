@@ -1,6 +1,7 @@
 import { useAtomValue } from 'jotai'
 import { isOverdue } from '@imeri/shared'
 import { Icon } from '@/components/Icon'
+import { CLUSTER_LABEL } from '@/constants/labels'
 import { ALL_CLUSTERS, CLUSTER_STATS } from '@/constants/staff'
 import { flowAtom } from '@/stores/flowAtom'
 import type { Submission } from '@/types'
@@ -34,7 +35,7 @@ export function ClusterCompare({ list }: { readonly list: readonly Submission[] 
         return (
           <div className="wtable-row" style={{ gridTemplateColumns: COLUMNS }} key={cluster}>
             <span className="w-who">
-              <span className="w-name">{cluster}</span>
+              <span className="w-name">{CLUSTER_LABEL[cluster]}</span>
             </span>
             <span className="w-num num">{active.length}</span>
             <span className={overdue > 0 ? 'w-num num bad' : 'w-num num zero'}>{overdue}</span>

@@ -1,6 +1,7 @@
-import { isOverdue, stageAt } from '@imeri/shared'
+import { isOverdue, stageByKey } from '@imeri/shared'
 import { roleById } from '@/constants/roles'
 import { STAFF } from '@/constants/staff'
+import { STAGE_LABEL } from '@/constants/stages'
 import { initialsOf, percent } from './format'
 import type { CategoryRoute, Role, Stage, Staff, Submission } from '@/types'
 
@@ -14,15 +15,15 @@ export interface Holder {
 export function holderOf(submission: Submission, stages: readonly Stage[], route: CategoryRoute): Holder {
   if (submission.status === 'done') return { name: '—', initials: '✓', position: 'Arsip' }
 
-  const stage = stageAt(stages, submission.stageIndex)
-  if (stage.key === 'submitter') {
+  const { key } = stageByKey(stages, submission.stageKey)
+  if (key === 'submitter') {
     return { name: submission.requester, initials: initialsOf(submission.requester), position: 'menunggu perbaikan' }
   }
-  if (stage.key === 'secretary' || stage.key === 'recording') {
+  if (key === 'secretary' || key === 'recording') {
     const secretary = roleById(route[submission.category])
     return { name: secretary.name, initials: secretary.initials, position: secretary.position }
   }
-  if (stage.key === 'deputy') {
+  if (key === 'deputy') {
     const deputy = roleById('hendra')
     return { name: deputy.name, initials: deputy.initials, position: 'QC & paraf' }
   }
@@ -55,17 +56,26 @@ export function summarize(list: readonly Submission[], stages: readonly Stage[])
 
 export interface BacklogRow {
   readonly stage: Stage
-  readonly index: number
+  readonly desk: string
+  readonly action: string
   readonly count: number
   readonly overdue: number
 }
 
 /** How many documents are piled up at each desk, and how many of those are late. */
 export function backlogByStage(active: readonly Submission[], stages: readonly Stage[]): readonly BacklogRow[] {
-  return stages.slice(0, stages.length - 1).map((stage, index) => {
-    const atDesk = active.filter((item) => item.stageIndex === index)
-    return { stage, index, count: atDesk.length, overdue: atDesk.filter((item) => isOverdue(item, stages)).length }
-  })
+  return stages
+    .filter((stage) => stage.key !== 'done')
+    .map((stage) => {
+      const atDesk = active.filter((item) => item.stageKey === stage.key)
+      return {
+        stage,
+        desk: STAGE_LABEL[stage.key].desk,
+        action: STAGE_LABEL[stage.key].action,
+        count: atDesk.length,
+        overdue: atDesk.filter((item) => isOverdue(item, stages)).length,
+      }
+    })
 }
 
 export interface WorkloadRow {

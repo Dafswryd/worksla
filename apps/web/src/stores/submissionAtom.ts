@@ -1,8 +1,8 @@
 import { useCallback } from 'react'
 import { atom, useAtom, useAtomValue } from 'jotai'
-import { stageAt } from '@imeri/shared'
+import { nextStage, previousStage, stageByKey } from '@imeri/shared'
 import { CODE_PREFIX, SUBMISSION_SEED } from '@/constants/submissions'
-import { ADVANCE_TRAIL } from '@/constants/stages'
+import { ADVANCE_TRAIL, STAGE_LABEL } from '@/constants/stages'
 import { roleById } from '@/constants/roles'
 import { nowStamp } from '@/helpers/format'
 import { flowAtom } from './flowAtom'
@@ -34,14 +34,14 @@ export function useFlowActions() {
     (code: string) => {
       const current = list.find((item) => item.code === code)
       if (!current) return
-      const stage = stageAt(stages, current.stageIndex)
-      const nextIndex = current.stageIndex + 1
-      const finished = nextIndex >= stages.length - 1
+      const stage = stageByKey(stages, current.stageKey)
+      const target = nextStage(current.stageKey)
+      const finished = target === 'done'
 
       setList((prev) =>
         replace(prev, code, (item) => ({
           ...item,
-          stageIndex: nextIndex,
+          stageKey: target,
           daysInStage: finished ? 0 : 1,
           status: finished ? 'done' : 'running',
           checklist: [],
@@ -61,7 +61,7 @@ export function useFlowActions() {
       toast(
         finished
           ? `${code} selesai — pengaju sudah diberi tahu`
-          : `${code} diteruskan ke ${stageAt(stages, nextIndex).desk}`,
+          : `${code} diteruskan ke ${STAGE_LABEL[target].desk}`,
       )
     },
     [list, role, setList, stages, toast],
@@ -80,12 +80,12 @@ export function useFlowActions() {
       }
       const current = list.find((item) => item.code === code)
       if (!current) return
-      const target = stageAt(stages, current.stageIndex - 1)
+      const target = previousStage(current.stageKey)
 
       setList((prev) =>
         replace(prev, code, (item) => ({
           ...item,
-          stageIndex: Math.max(0, item.stageIndex - 1),
+          stageKey: target,
           daysInStage: 1,
           status: 'returned',
           checklist: points.map((text) => ({ text, done: false })),
@@ -94,7 +94,7 @@ export function useFlowActions() {
             {
               actor: role.name,
               role: role.position,
-              action: `mengembalikan ke ${target.desk}`,
+              action: `mengembalikan ke ${STAGE_LABEL[target].desk}`,
               time: nowStamp(),
               kind: 'return',
               comment: `${points.join('. ')}.`,
@@ -103,9 +103,9 @@ export function useFlowActions() {
         })),
       )
 
-      toast(`${code} dikembalikan ke ${target.desk} dengan ${points.length} poin checklist`)
+      toast(`${code} dikembalikan ke ${STAGE_LABEL[target].desk} dengan ${points.length} poin checklist`)
     },
-    [list, role, setList, stages, toast],
+    [list, role, setList, toast],
   )
 
   /** Tick or untick one revision checklist item. */
@@ -134,7 +134,7 @@ export function useFlowActions() {
         cluster: 'HCRC',
         category,
         createdAt: '12 Sep 2026',
-        stageIndex: 1,
+        stageKey: 'secretary',
         daysInStage: 1,
         status: 'running',
         attachments: [
