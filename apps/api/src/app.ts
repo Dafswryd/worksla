@@ -6,6 +6,7 @@ import { NotFound } from './errors'
 import { errorHandler } from './middleware/errorHandler'
 import { authRoutes } from './modules/auth/routes'
 import { documentRoutes } from './modules/documents/routes'
+import { flowRuleRoutes } from './modules/flowRules/routes'
 import { submissionRoutes } from './modules/submissions/routes'
 
 export function createApp(): express.Express {
@@ -22,6 +23,7 @@ export function createApp(): express.Express {
   app.use('/auth', authRoutes)
   app.use('/submissions', submissionRoutes)
   app.use('/documents', documentRoutes)
+  app.use('/flow-rules', flowRuleRoutes)
 
   app.use((_req, _res, next) => next(NotFound()))
   app.use(errorHandler)
