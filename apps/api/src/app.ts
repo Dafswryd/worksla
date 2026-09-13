@@ -5,6 +5,7 @@ import { env } from './env'
 import { NotFound } from './errors'
 import { errorHandler } from './middleware/errorHandler'
 import { authRoutes } from './modules/auth/routes'
+import { submissionRoutes } from './modules/submissions/routes'
 
 export function createApp(): express.Express {
   const app = express()
@@ -18,6 +19,7 @@ export function createApp(): express.Express {
   })
 
   app.use('/auth', authRoutes)
+  app.use('/submissions', submissionRoutes)
 
   app.use((_req, _res, next) => next(NotFound()))
   app.use(errorHandler)
