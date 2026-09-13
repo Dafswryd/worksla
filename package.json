@@ -4,14 +4,17 @@
   "version": "0.1.0",
   "workspaces": [
     "apps/web",
+    "apps/api",
     "packages/shared"
   ],
   "scripts": {
-    "dev": "npm run dev -w @imeri/web",
+    "dev": "npm run dev -w @imeri/api & npm run dev -w @imeri/web",
     "dev:web": "npm run dev -w @imeri/web",
+    "dev:api": "npm run dev -w @imeri/api",
     "build:web": "npm run build -w @imeri/web",
+    "build:api": "npm run build -w @imeri/api",
     "preview:web": "npm run preview -w @imeri/web",
-    "typecheck": "npm run typecheck -w @imeri/web",
+    "typecheck": "npm run typecheck -w @imeri/web && npm run typecheck -w @imeri/api",
     "test": "vitest run",
     "test:watch": "vitest"
   },
