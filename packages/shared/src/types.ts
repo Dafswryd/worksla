@@ -1,97 +1,103 @@
-/** Tipe domain pengajuan dokumen IMERI — dipakai bersama web dan (nanti) api. */
+/** Domain types for the IMERI document submission flow — shared by web and (later) api. */
 
-export type Kategori = 'Keuangan' | 'Kepegawaian' | 'Umum'
+export type Category = 'finance' | 'personnel' | 'general'
 
 export type Cluster = 'HCRC' | 'MedTech' | 'Stem Cell' | 'Drug Development'
 
-/** Enam tahap yang dilewati satu berkas, berurutan. */
-export type TahapKey = 'pengaju' | 'sekret' | 'wadir' | 'direktur' | 'rekam' | 'selesai'
+/** The six stages a document passes through, in order. */
+export type StageKey = 'submitter' | 'secretary' | 'deputy' | 'director' | 'recording' | 'done'
 
-export type StatusPengajuan = 'berjalan' | 'dikembalikan' | 'selesai'
+export type SubmissionStatus = 'running' | 'returned' | 'done'
 
-export type PeranTipe = 'pengaju' | 'sekret' | 'wadir' | 'direktur' | 'admin' | 'monitor'
+export type RoleType = 'submitter' | 'secretary' | 'deputy' | 'director' | 'admin' | 'monitor'
 
-export type JejakJenis = 'up' | 'ok' | 'no'
+export type TrailKind = 'submit' | 'approve' | 'return'
 
-export interface Tahap {
-  readonly key: TahapKey
-  /** Meja yang memegang berkas pada tahap ini. */
-  readonly meja: string
-  /** Pekerjaan yang dilakukan di meja itu. */
-  readonly aksi: string
-  /** Batas hari untuk tahap ini; null berarti tidak dibatasi. */
+/** A staff member is either tied to one cluster or works across all of them. */
+export type StaffScope = Cluster | 'cross-cluster'
+
+export interface Stage {
+  readonly key: StageKey
+  /** The desk holding the document at this stage. */
+  readonly desk: string
+  /** The work carried out at that desk. */
+  readonly action: string
+  /** Day limit for this stage; null means unbounded. */
   readonly sla: number | null
 }
 
-export interface Lampiran {
-  readonly nama: string
-  readonly tipe: 'pdf' | 'xls'
-  readonly ukuran: string
+export interface Attachment {
+  readonly name: string
+  readonly type: 'pdf' | 'xls'
+  readonly size: string
 }
 
 export interface ChecklistItem {
-  readonly teks: string
+  readonly text: string
   readonly done: boolean
 }
 
-export interface JejakItem {
-  readonly aktor: string
-  readonly peran: string
-  readonly aksi: string
-  readonly waktu: string
-  readonly jenis: JejakJenis
-  readonly komentar?: string
+export interface TrailEntry {
+  readonly actor: string
+  readonly role: string
+  readonly action: string
+  readonly time: string
+  readonly kind: TrailKind
+  readonly comment?: string
 }
 
-export interface Pengajuan {
-  readonly kode: string
-  readonly judul: string
-  readonly pemohon: string
-  readonly pemohonId: string
+export interface Submission {
+  readonly code: string
+  readonly title: string
+  readonly requester: string
+  readonly requesterId: string
   readonly cluster: Cluster
-  readonly kategori: Kategori
-  readonly dibuat: string
-  /** Indeks ke daftar tahap (0..5). */
-  readonly tahap: number
-  /** Hari ke berapa berkas berada di tahap sekarang. */
-  readonly hari: number
-  readonly status: StatusPengajuan
-  readonly lampiran: readonly Lampiran[]
+  readonly category: Category
+  readonly createdAt: string
+  /** Index into the stage list (0..5). */
+  readonly stageIndex: number
+  /** How many days the document has sat at the current stage. */
+  readonly daysInStage: number
+  readonly status: SubmissionStatus
+  readonly attachments: readonly Attachment[]
   readonly checklist: readonly ChecklistItem[]
-  readonly riwayat: readonly JejakItem[]
+  readonly history: readonly TrailEntry[]
 }
 
-export interface Peran {
+export interface Role {
   readonly id: string
-  readonly nama: string
-  readonly tipe: PeranTipe
-  /** Jabatan yang ditampilkan di kartu pengguna dan pemilih akun. */
-  readonly jab: string
-  /** Inisial untuk avatar. */
-  readonly ini: string
-  /** Hanya untuk sekret — kategori yang menjadi tanggung jawabnya. */
-  readonly kategori?: Kategori
-  /** Hanya untuk monitor cluster — cluster yang dipantaunya. */
+  readonly name: string
+  readonly type: RoleType
+  /** Job title shown on the user card and the account picker. */
+  readonly position: string
+  /** Initials for the avatar. */
+  readonly initials: string
+  /** Secretaries only — the category they are responsible for. */
+  readonly category?: Category
+  /** Cluster monitors only — the cluster they watch. */
   readonly cluster?: Cluster
 }
 
-/** Rute kategori → id sekret yang menerimanya. */
-export type RuteKategori = Readonly<Record<Kategori, string>>
+/** Category → id of the secretary who receives it. */
+export type CategoryRoute = Readonly<Record<Category, string>>
 
-export interface Pegawai {
-  readonly nama: string
-  readonly peran: string
-  readonly cluster: Cluster | 'Lintas cluster'
-  /** Rata-rata hari memegang berkas, 30 hari terakhir. */
-  readonly rata: number
-  readonly selesai30: number
+export interface Staff {
+  readonly name: string
+  /** Desk this person works at — drives scope filtering. */
+  readonly type: Exclude<RoleType, 'admin' | 'monitor'>
+  /** Job title as shown on screen. */
+  readonly position: string
+  readonly scope: StaffScope
+  /** Average days holding a document, last 30 days. */
+  readonly avgDays: number
+  readonly completed30: number
 }
 
-export interface StatCluster {
-  readonly rata: number
-  readonly selesai30: number
-  readonly pegawai: number
+export interface ClusterStat {
+  readonly avgDays: number
+  readonly completed30: number
+  readonly headcount: number
 }
 
-/** [tanggal, berkas masuk, berkas selesai] */
-export type TitikHarian = readonly [string, number, number]
+/** [date, documents in, documents completed] */
+export type DailyPoint = readonly [string, number, number]

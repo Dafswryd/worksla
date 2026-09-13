@@ -1,33 +1,61 @@
-import type { Cluster, Pegawai, StatCluster, TitikHarian } from '@/types'
+import type { Cluster, ClusterStat, DailyPoint, Staff } from '@/types'
 
-export const SEMUA_CLUSTER: readonly Cluster[] = ['HCRC', 'MedTech', 'Stem Cell', 'Drug Development']
+export const ALL_CLUSTERS: readonly Cluster[] = ['HCRC', 'MedTech', 'Stem Cell', 'Drug Development']
 
 /**
- * Daftar pegawai untuk papan beban kerja. `rata` dan `selesai30` adalah
- * ringkasan 30 hari terakhir yang nantinya datang dari backend; kolom
- * "di meja" dihitung langsung dari daftar pengajuan, bukan dari sini.
+ * Staff list for the workload board. `avgDays` and `completed30` summarise the
+ * last 30 days and will come from the backend later; the "at desk" column is
+ * derived from the submission list itself, not from here.
  */
-export const PEGAWAI: readonly Pegawai[] = [
-  { nama: 'Rina Kartika', peran: 'Pengaju', cluster: 'HCRC', rata: 0.9, selesai30: 7 },
-  { nama: 'Andi Prasetyo', peran: 'Pengaju', cluster: 'MedTech', rata: 1.4, selesai30: 9 },
-  { nama: 'Lestari Ayu', peran: 'Pengaju', cluster: 'Stem Cell', rata: 0.7, selesai30: 5 },
-  { nama: 'Dimas Saputra', peran: 'Pengaju', cluster: 'Drug Development', rata: 1.1, selesai30: 6 },
-  { nama: 'Sari Dewi', peran: 'Sekret Keuangan', cluster: 'Lintas cluster', rata: 0.8, selesai30: 18 },
-  { nama: 'Budi Santoso', peran: 'Sekret Kepegawaian', cluster: 'Lintas cluster', rata: 1.2, selesai30: 11 },
-  { nama: 'Tuti Marlina', peran: 'Sekret Umum', cluster: 'Lintas cluster', rata: 1.9, selesai30: 9 },
-  { nama: 'Hendra Wijaya', peran: 'Wadir', cluster: 'Lintas cluster', rata: 2.4, selesai30: 31 },
-  { nama: 'Ratna Puspita', peran: 'Direktur', cluster: 'Lintas cluster', rata: 2.8, selesai30: 29 },
+export const STAFF: readonly Staff[] = [
+  { name: 'Rina Kartika', type: 'submitter', position: 'Pengaju', scope: 'HCRC', avgDays: 0.9, completed30: 7 },
+  { name: 'Andi Prasetyo', type: 'submitter', position: 'Pengaju', scope: 'MedTech', avgDays: 1.4, completed30: 9 },
+  { name: 'Lestari Ayu', type: 'submitter', position: 'Pengaju', scope: 'Stem Cell', avgDays: 0.7, completed30: 5 },
+  {
+    name: 'Dimas Saputra',
+    type: 'submitter',
+    position: 'Pengaju',
+    scope: 'Drug Development',
+    avgDays: 1.1,
+    completed30: 6,
+  },
+  {
+    name: 'Sari Dewi',
+    type: 'secretary',
+    position: 'Sekret Keuangan',
+    scope: 'cross-cluster',
+    avgDays: 0.8,
+    completed30: 18,
+  },
+  {
+    name: 'Budi Santoso',
+    type: 'secretary',
+    position: 'Sekret Kepegawaian',
+    scope: 'cross-cluster',
+    avgDays: 1.2,
+    completed30: 11,
+  },
+  {
+    name: 'Tuti Marlina',
+    type: 'secretary',
+    position: 'Sekret Umum',
+    scope: 'cross-cluster',
+    avgDays: 1.9,
+    completed30: 9,
+  },
+  { name: 'Hendra Wijaya', type: 'deputy', position: 'Wadir', scope: 'cross-cluster', avgDays: 2.4, completed30: 31 },
+  { name: 'Ratna Puspita', type: 'director', position: 'Direktur', scope: 'cross-cluster', avgDays: 2.8, completed30: 29 },
 ]
 
-export const STAT_CLUSTER: Readonly<Record<Cluster, StatCluster>> = {
-  HCRC: { rata: 5.2, selesai30: 14, pegawai: 9 },
-  MedTech: { rata: 6.8, selesai30: 11, pegawai: 12 },
-  'Stem Cell': { rata: 4.6, selesai30: 8, pegawai: 7 },
-  'Drug Development': { rata: 3.9, selesai30: 6, pegawai: 5 },
+export const CLUSTER_STATS: Readonly<Record<Cluster, ClusterStat>> = {
+  HCRC: { avgDays: 5.2, completed30: 14, headcount: 9 },
+  MedTech: { avgDays: 6.8, completed30: 11, headcount: 12 },
+  'Stem Cell': { avgDays: 4.6, completed30: 8, headcount: 7 },
+  'Drug Development': { avgDays: 3.9, completed30: 6, headcount: 5 },
 }
 
-/** Pergerakan 14 hari terakhir: [tanggal, berkas masuk, berkas selesai]. */
-export const HARIAN: readonly TitikHarian[] = [
+/** Movement over the last 14 days: [date, documents in, documents completed]. */
+export const DAILY: readonly DailyPoint[] = [
   ['30/8', 3, 2],
   ['31/8', 2, 3],
   ['1/9', 4, 2],

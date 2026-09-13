@@ -1,71 +1,74 @@
 import { Navigate } from 'react-router-dom'
 import { useAtom, useAtomValue } from 'jotai'
-import { lewatSla, memegang, pemantau } from '@imeri/shared'
+import { isHolder, isObserver, isOverdue } from '@imeri/shared'
 import { Chip } from '@/components/Chip'
 import { Icon } from '@/components/Icon'
 import { StatStrip } from '@/components/StatStrip'
-import { BuatModal } from '@/components/pengajuan/BuatModal'
-import { FilterBar } from '@/components/pengajuan/FilterBar'
-import { PengajuanDrawer } from '@/components/pengajuan/PengajuanDrawer'
-import { PengajuanTable } from '@/components/pengajuan/PengajuanTable'
-import { saringDaftar } from '@/helpers/saring'
-import { alurAtom } from '@/stores/alurAtom'
-import { pengajuanAtom, useAlurAksi } from '@/stores/pengajuanAtom'
-import { peranAktifAtom } from '@/stores/sesiAtom'
-import { berkasTerbukaAtom, cariAtom, saringAtom } from '@/stores/uiAtom'
-import { JUDUL_TAB, buatTerbukaAtom, tabAtom } from './atoms'
+import { CreateModal } from '@/components/submission/CreateModal'
+import { FilterBar } from '@/components/submission/FilterBar'
+import { SubmissionDrawer } from '@/components/submission/SubmissionDrawer'
+import { SubmissionTable } from '@/components/submission/SubmissionTable'
+import { CATEGORY_LABEL } from '@/constants/labels'
+import { filterSubmissions } from '@/helpers/filter'
+import { flowAtom } from '@/stores/flowAtom'
+import { submissionsAtom, useFlowActions } from '@/stores/submissionAtom'
+import { activeRoleAtom } from '@/stores/sessionAtom'
+import { filtersAtom, openCodeAtom, searchAtom } from '@/stores/uiAtom'
+import { TAB_TITLE, createOpenAtom, tabAtom } from './atoms'
 import { TabBar } from './components/TabBar'
-import type { Peran } from '@/types'
+import type { Role } from '@/types'
 
-function subJudul(peran: Peran): string {
-  if (peran.tipe === 'pengaju') return 'Pengajuan yang Anda buat, lengkap dengan posisi berkasnya saat ini.'
-  if (peran.tipe === 'sekret') return `Hanya pengajuan kategori ${peran.kategori} yang masuk ke meja Anda.`
-  if (peran.tipe === 'wadir') return 'Semua kategori melewati meja Anda untuk QC dan paraf.'
+function subtitleFor(role: Role): string {
+  if (role.type === 'submitter') return 'Pengajuan yang Anda buat, lengkap dengan posisi berkasnya saat ini.'
+  if (role.type === 'secretary') {
+    return `Hanya pengajuan kategori ${role.category ? CATEGORY_LABEL[role.category] : ''} yang masuk ke meja Anda.`
+  }
+  if (role.type === 'deputy') return 'Semua kategori melewati meja Anda untuk QC dan paraf.'
   return 'Berkas yang sudah diparaf Wadir dan menunggu tanda tangan Anda.'
 }
 
-export default function KotakMasuk() {
-  const peran = useAtomValue(peranAktifAtom)
-  const daftar = useAtomValue(pengajuanAtom)
-  const { tahapan } = useAtomValue(alurAtom)
-  const saring = useAtomValue(saringAtom)
-  const cari = useAtomValue(cariAtom)
+export default function Inbox() {
+  const role = useAtomValue(activeRoleAtom)
+  const list = useAtomValue(submissionsAtom)
+  const { stages } = useAtomValue(flowAtom)
+  const filters = useAtomValue(filtersAtom)
+  const search = useAtomValue(searchAtom)
   const [tab, setTab] = useAtom(tabAtom)
-  const [terbuka, setTerbuka] = useAtom(berkasTerbukaAtom)
-  const [buatTerbuka, setBuatTerbuka] = useAtom(buatTerbukaAtom)
-  const { buat } = useAlurAksi()
+  const [openCode, setOpenCode] = useAtom(openCodeAtom)
+  const [createOpen, setCreateOpen] = useAtom(createOpenAtom)
+  const { create } = useFlowActions()
 
-  // Peran pemantau tidak punya kotak masuk — mereka mulai dari papan ringkasan.
-  if (pemantau(peran)) return <Navigate to="/pemantauan" replace />
+  // Observer roles have no inbox — they start from the summary board.
+  if (isObserver(role)) return <Navigate to="/monitoring" replace />
 
-  const lingkup = saringDaftar(daftar, peran, saring, cari)
-  const perluSaya = lingkup.filter((item) => memegang(item, peran, tahapan))
-  const berjalan = lingkup.filter((item) => item.status === 'berjalan')
-  const telat = lingkup.filter((item) => lewatSla(item, tahapan))
-  const selesai = lingkup.filter((item) => item.status === 'selesai')
-  const dikembalikan = lingkup.filter((item) => item.status === 'dikembalikan')
+  const scoped = filterSubmissions(list, role, filters, search)
+  const mine = scoped.filter((item) => isHolder(item, role, stages))
+  const running = scoped.filter((item) => item.status === 'running')
+  const overdue = scoped.filter((item) => isOverdue(item, stages))
+  const done = scoped.filter((item) => item.status === 'done')
+  const returned = scoped.filter((item) => item.status === 'returned')
 
-  const tampil =
-    tab === 'tindakan'
-      ? perluSaya
-      : tab === 'jalan'
-        ? berjalan.filter((item) => !memegang(item, peran, tahapan))
-        : tab === 'balik'
-          ? dikembalikan
-          : selesai
+  const shown =
+    tab === 'action'
+      ? mine
+      : tab === 'running'
+        ? running.filter((item) => !isHolder(item, role, stages))
+        : tab === 'returned'
+          ? returned
+          : done
 
-  const dibuka = terbuka === null ? undefined : daftar.find((item) => item.kode === terbuka)
+  const opened = openCode === null ? undefined : list.find((item) => item.code === openCode)
 
   return (
     <div className="canvas">
       <div className="page-head">
         <div>
           <h1 className="page-title">Kotak masuk</h1>
-          <p className="page-sub">{subJudul(peran)}</p>
+          <p className="page-sub">{subtitleFor(role)}</p>
         </div>
         <div className="page-actions">
-          {peran.tipe === 'pengaju' ? (
-            <button type="button" className="btn btn-primary" onClick={() => setBuatTerbuka(true)}>
+          {role.type === 'submitter' ? (
+            <button type="button" className="btn btn-primary" onClick={() => setCreateOpen(true)}>
               <Icon name="plus" size={16} strokeWidth={2} /> Buat pengajuan
             </button>
           ) : null}
@@ -76,58 +79,58 @@ export default function KotakMasuk() {
         items={[
           {
             label: 'Perlu tindakan saya',
-            ikon: 'inbox',
-            nilai: perluSaya.length,
-            keterangan: perluSaya.length > 0 ? 'bola ada di meja Anda' : 'meja Anda kosong',
+            icon: 'inbox',
+            value: mine.length,
+            caption: mine.length > 0 ? 'bola ada di meja Anda' : 'meja Anda kosong',
           },
-          { label: 'Sedang berjalan', ikon: 'arrowRight', nilai: berjalan.length, keterangan: 'di seluruh tahap' },
+          { label: 'Sedang berjalan', icon: 'arrowRight', value: running.length, caption: 'di seluruh tahap' },
           {
             label: 'Lewat SLA',
-            ikon: 'clock',
-            nilai: (
+            icon: 'clock',
+            value: (
               <>
-                {telat.length}
-                {telat.length > 0 ? <Chip tone="amber">perlu ditagih</Chip> : null}
+                {overdue.length}
+                {overdue.length > 0 ? <Chip tone="amber">perlu ditagih</Chip> : null}
               </>
             ),
-            keterangan: telat.length > 0 ? 'melebihi batas waktu tahap' : 'semua dalam batas waktu',
+            caption: overdue.length > 0 ? 'melebihi batas waktu tahap' : 'semua dalam batas waktu',
           },
-          { label: 'Selesai', ikon: 'check', nilai: selesai.length, keterangan: 'tersimpan di arsip' },
+          { label: 'Selesai', icon: 'check', value: done.length, caption: 'tersimpan di arsip' },
         ]}
       />
 
       <TabBar
-        aktif={tab}
-        onPilih={setTab}
-        jumlah={{
-          tindakan: perluSaya.length,
-          jalan: berjalan.length - perluSaya.length > 0 ? berjalan.length - perluSaya.length : 0,
-          balik: dikembalikan.length,
-          selesai: selesai.length,
+        active={tab}
+        onPick={setTab}
+        counts={{
+          action: mine.length,
+          running: running.length - mine.length > 0 ? running.length - mine.length : 0,
+          returned: returned.length,
+          done: done.length,
         }}
       />
 
-      <FilterBar peran={peran} />
+      <FilterBar role={role} />
 
       <div className="card">
         <div className="card-head">
-          <span className="card-title">{JUDUL_TAB[tab]}</span>
-          <Chip tone="slate" angka>
-            {tampil.length} berkas
+          <span className="card-title">{TAB_TITLE[tab]}</span>
+          <Chip tone="slate" numeric>
+            {shown.length} berkas
           </Chip>
         </div>
-        <PengajuanTable daftar={tampil} kodeAktif={terbuka} onBuka={(kode) => setTerbuka(kode)} />
+        <SubmissionTable list={shown} activeCode={openCode} onOpen={(code) => setOpenCode(code)} />
       </div>
 
-      {dibuka ? <PengajuanDrawer pengajuan={dibuka} onTutup={() => setTerbuka(null)} /> : null}
+      {opened ? <SubmissionDrawer submission={opened} onClose={() => setOpenCode(null)} /> : null}
 
-      {buatTerbuka ? (
-        <BuatModal
-          onBatal={() => setBuatTerbuka(false)}
-          onKirim={(judul, kategori) => {
-            buat(judul, kategori)
-            setBuatTerbuka(false)
-            setTab('jalan')
+      {createOpen ? (
+        <CreateModal
+          onCancel={() => setCreateOpen(false)}
+          onSubmit={(title, category) => {
+            create(title, category)
+            setCreateOpen(false)
+            setTab('running')
           }}
         />
       ) : null}

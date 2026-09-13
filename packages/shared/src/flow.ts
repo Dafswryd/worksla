@@ -1,63 +1,63 @@
-import type { Kategori, Pengajuan, Peran, RuteKategori, Tahap } from './types'
+import type { Category, CategoryRoute, Role, Stage, Submission } from './types'
 
 /**
- * Aturan alur — sengaja murni (tanpa React, tanpa state global) supaya bisa
- * dipakai ulang oleh backend saat validasi sisi server dibangun.
+ * Flow rules — deliberately pure (no React, no global state) so the backend can
+ * reuse them verbatim once server-side validation is built.
  */
 
-/** Ambil tahap pada indeks tertentu, dijepit ke rentang yang valid. */
-export function tahapDari(tahapan: readonly Tahap[], indeks: number): Tahap {
-  const aman = Math.min(Math.max(indeks, 0), tahapan.length - 1)
-  const tahap = tahapan[aman]
-  if (!tahap) throw new Error('Daftar tahap kosong')
-  return tahap
+/** Read the stage at a given index, clamped to the valid range. */
+export function stageAt(stages: readonly Stage[], index: number): Stage {
+  const safe = Math.min(Math.max(index, 0), stages.length - 1)
+  const stage = stages[safe]
+  if (!stage) throw new Error('Stage list is empty')
+  return stage
 }
 
-/** Peran yang hanya membaca: super admin dan monitor cluster. */
-export const pemantau = (peran: Peran): boolean => peran.tipe === 'admin' || peran.tipe === 'monitor'
+/** Read-only roles: super admin and cluster monitor. */
+export const isObserver = (role: Role): boolean => role.type === 'admin' || role.type === 'monitor'
 
-/** Apakah berkas ini masuk lingkup peran tersebut. */
-export function terlihat(pengajuan: Pengajuan, peran: Peran): boolean {
-  if (peran.tipe === 'pengaju') return pengajuan.pemohonId === peran.id
-  if (peran.tipe === 'sekret') return pengajuan.kategori === peran.kategori
-  if (peran.tipe === 'monitor') return pengajuan.cluster === peran.cluster
+/** Whether this document falls within the role's scope. */
+export function isVisible(submission: Submission, role: Role): boolean {
+  if (role.type === 'submitter') return submission.requesterId === role.id
+  if (role.type === 'secretary') return submission.category === role.category
+  if (role.type === 'monitor') return submission.cluster === role.cluster
   return true
 }
 
-/** Apakah bola ada di tangan peran tersebut sekarang. */
-export function memegang(pengajuan: Pengajuan, peran: Peran, tahapan: readonly Tahap[]): boolean {
-  if (pengajuan.status === 'selesai') return false
-  const tahap = tahapDari(tahapan, pengajuan.tahap)
-  if (tahap.key === 'pengaju') return peran.tipe === 'pengaju' && pengajuan.pemohonId === peran.id
-  if (tahap.key === 'sekret' || tahap.key === 'rekam') {
-    return peran.tipe === 'sekret' && pengajuan.kategori === peran.kategori
+/** Whether the ball is in this role's court right now. */
+export function isHolder(submission: Submission, role: Role, stages: readonly Stage[]): boolean {
+  if (submission.status === 'done') return false
+  const stage = stageAt(stages, submission.stageIndex)
+  if (stage.key === 'submitter') return role.type === 'submitter' && submission.requesterId === role.id
+  if (stage.key === 'secretary' || stage.key === 'recording') {
+    return role.type === 'secretary' && submission.category === role.category
   }
-  if (tahap.key === 'wadir') return peran.tipe === 'wadir'
-  if (tahap.key === 'direktur') return peran.tipe === 'direktur'
+  if (stage.key === 'deputy') return role.type === 'deputy'
+  if (stage.key === 'director') return role.type === 'director'
   return false
 }
 
-/** Berkas melewati batas waktu tahapnya. */
-export function lewatSla(pengajuan: Pengajuan, tahapan: readonly Tahap[]): boolean {
-  if (pengajuan.status === 'selesai') return false
-  const { sla } = tahapDari(tahapan, pengajuan.tahap)
-  return sla !== null && pengajuan.hari > sla
+/** The document has passed its stage deadline. */
+export function isOverdue(submission: Submission, stages: readonly Stage[]): boolean {
+  if (submission.status === 'done') return false
+  const { sla } = stageAt(stages, submission.stageIndex)
+  return sla !== null && submission.daysInStage > sla
 }
 
-/** Berapa hari melewati batas; 0 kalau masih dalam batas. */
-export function selisihSla(pengajuan: Pengajuan, tahapan: readonly Tahap[]): number {
-  const { sla } = tahapDari(tahapan, pengajuan.tahap)
-  if (sla === null || pengajuan.status === 'selesai') return 0
-  return Math.max(0, pengajuan.hari - sla)
+/** Days past the deadline; 0 when still within it. */
+export function overdueDays(submission: Submission, stages: readonly Stage[]): number {
+  const { sla } = stageAt(stages, submission.stageIndex)
+  if (sla === null || submission.status === 'done') return 0
+  return Math.max(0, submission.daysInStage - sla)
 }
 
-/** Sekret yang menangani satu kategori, menurut rute yang berlaku. */
-export const sekretUntuk = (rute: RuteKategori, kategori: Kategori): string => rute[kategori]
+/** The secretary handling one category, per the active route. */
+export const secretaryFor = (route: CategoryRoute, category: Category): string => route[category]
 
-/** Checklist revisi sudah tertutup semua (atau memang tidak ada). */
-export const checklistBeres = (pengajuan: Pengajuan): boolean =>
-  pengajuan.checklist.length === 0 || pengajuan.checklist.every((item) => item.done)
+/** Every revision checklist item is closed (or there are none). */
+export const checklistCleared = (submission: Submission): boolean =>
+  submission.checklist.length === 0 || submission.checklist.every((item) => item.done)
 
-/** Berkas yang dikembalikan tidak boleh diteruskan sebelum checklist tertutup. */
-export const bolehDiteruskan = (pengajuan: Pengajuan): boolean =>
-  pengajuan.status !== 'dikembalikan' || checklistBeres(pengajuan)
+/** A returned document may not move on until its checklist is closed. */
+export const canAdvance = (submission: Submission): boolean =>
+  submission.status !== 'returned' || checklistCleared(submission)

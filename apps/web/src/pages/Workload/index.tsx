@@ -1,21 +1,21 @@
 import { Navigate } from 'react-router-dom'
 import { useAtomValue } from 'jotai'
-import { pemantau, terlihat } from '@imeri/shared'
-import { bebanKerja } from '@/helpers/pemantauan'
-import { alurAtom } from '@/stores/alurAtom'
-import { pengajuanAtom } from '@/stores/pengajuanAtom'
-import { peranAktifAtom } from '@/stores/sesiAtom'
-import { TabelBeban } from '@/pages/Pemantauan/components/TabelBeban'
+import { isObserver, isVisible } from '@imeri/shared'
+import { workloadRows } from '@/helpers/monitoring'
+import { flowAtom } from '@/stores/flowAtom'
+import { submissionsAtom } from '@/stores/submissionAtom'
+import { activeRoleAtom } from '@/stores/sessionAtom'
+import { WorkloadTable } from '@/pages/Monitoring/components/WorkloadTable'
 
-/** Papan beban kerja versi penuh — semua kolom, semua pegawai dalam lingkup. */
-export default function BebanKerja() {
-  const peran = useAtomValue(peranAktifAtom)
-  const daftar = useAtomValue(pengajuanAtom)
-  const { tahapan, rute } = useAtomValue(alurAtom)
+/** Full workload board — every column, every staff member in scope. */
+export default function Workload() {
+  const role = useAtomValue(activeRoleAtom)
+  const list = useAtomValue(submissionsAtom)
+  const { stages, route } = useAtomValue(flowAtom)
 
-  if (!pemantau(peran)) return <Navigate to="/" replace />
+  if (!isObserver(role)) return <Navigate to="/" replace />
 
-  const lingkup = daftar.filter((item) => terlihat(item, peran))
+  const scoped = list.filter((item) => isVisible(item, role))
 
   return (
     <div className="canvas">
@@ -23,15 +23,15 @@ export default function BebanKerja() {
         <div>
           <h1 className="page-title">Beban kerja</h1>
           <p className="page-sub">
-            {peran.tipe === 'admin'
+            {role.type === 'admin'
               ? 'Siapa memegang berapa berkas saat ini, dan berapa di antaranya sudah lewat batas.'
-              : `Pegawai Cluster ${peran.cluster} beserta meja yang memproses berkas mereka.`}
+              : `Pegawai Cluster ${role.cluster} beserta meja yang memproses berkas mereka.`}
           </p>
         </div>
       </div>
 
       <div className="card">
-        <TabelBeban baris={bebanKerja(lingkup, tahapan, rute, peran)} penuh />
+        <WorkloadTable rows={workloadRows(scoped, stages, route, role)} full />
       </div>
     </div>
   )

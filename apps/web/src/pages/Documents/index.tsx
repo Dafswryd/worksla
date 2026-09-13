@@ -1,56 +1,56 @@
 import { useAtom, useAtomValue } from 'jotai'
-import { pemantau } from '@imeri/shared'
+import { isObserver } from '@imeri/shared'
 import { Chip } from '@/components/Chip'
-import { FilterBar } from '@/components/pengajuan/FilterBar'
-import { PengajuanDrawer } from '@/components/pengajuan/PengajuanDrawer'
-import { PengajuanTable } from '@/components/pengajuan/PengajuanTable'
-import { saringDaftar } from '@/helpers/saring'
-import { pengajuanAtom } from '@/stores/pengajuanAtom'
-import { peranAktifAtom } from '@/stores/sesiAtom'
-import { berkasTerbukaAtom, cariAtom, saringAtom } from '@/stores/uiAtom'
+import { FilterBar } from '@/components/submission/FilterBar'
+import { SubmissionDrawer } from '@/components/submission/SubmissionDrawer'
+import { SubmissionTable } from '@/components/submission/SubmissionTable'
+import { filterSubmissions } from '@/helpers/filter'
+import { submissionsAtom } from '@/stores/submissionAtom'
+import { activeRoleAtom } from '@/stores/sessionAtom'
+import { filtersAtom, openCodeAtom, searchAtom } from '@/stores/uiAtom'
 
-/** Seluruh berkas dalam lingkup peran — tanpa tab, hanya saringan. */
-export default function Berkas() {
-  const peran = useAtomValue(peranAktifAtom)
-  const daftar = useAtomValue(pengajuanAtom)
-  const saring = useAtomValue(saringAtom)
-  const cari = useAtomValue(cariAtom)
-  const [terbuka, setTerbuka] = useAtom(berkasTerbukaAtom)
+/** Every document within the role's scope — no tabs, just filters. */
+export default function Documents() {
+  const role = useAtomValue(activeRoleAtom)
+  const list = useAtomValue(submissionsAtom)
+  const filters = useAtomValue(filtersAtom)
+  const search = useAtomValue(searchAtom)
+  const [openCode, setOpenCode] = useAtom(openCodeAtom)
 
-  const tampil = saringDaftar(daftar, peran, saring, cari)
-  const dibuka = terbuka === null ? undefined : daftar.find((item) => item.kode === terbuka)
+  const shown = filterSubmissions(list, role, filters, search)
+  const opened = openCode === null ? undefined : list.find((item) => item.code === openCode)
 
   return (
     <div className="canvas">
       <div className="page-head">
         <div>
-          <h1 className="page-title">{peran.tipe === 'monitor' ? `Berkas Cluster ${peran.cluster}` : 'Semua berkas'}</h1>
+          <h1 className="page-title">{role.type === 'monitor' ? `Berkas Cluster ${role.cluster}` : 'Semua berkas'}</h1>
           <p className="page-sub">
-            {pemantau(peran)
+            {isObserver(role)
               ? 'Hanya membaca — Anda bisa membuka detail, tidak bisa memberi paraf.'
               : 'Berkas yang boleh Anda lihat, termasuk yang sedang di meja orang lain.'}
           </p>
         </div>
       </div>
 
-      <FilterBar peran={peran} />
+      <FilterBar role={role} />
 
       <div className="card">
         <div className="card-head">
           <span className="card-title">Seluruh berkas dalam lingkup Anda</span>
-          <Chip tone="slate" angka>
-            {tampil.length} berkas
+          <Chip tone="slate" numeric>
+            {shown.length} berkas
           </Chip>
         </div>
-        <PengajuanTable
-          daftar={tampil}
-          kodeAktif={terbuka}
-          onBuka={(kode) => setTerbuka(kode)}
-          kosong="Tidak ada berkas yang cocok."
+        <SubmissionTable
+          list={shown}
+          activeCode={openCode}
+          onOpen={(code) => setOpenCode(code)}
+          emptyText="Tidak ada berkas yang cocok."
         />
       </div>
 
-      {dibuka ? <PengajuanDrawer pengajuan={dibuka} onTutup={() => setTerbuka(null)} /> : null}
+      {opened ? <SubmissionDrawer submission={opened} onClose={() => setOpenCode(null)} /> : null}
     </div>
   )
 }

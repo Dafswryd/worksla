@@ -1,32 +1,32 @@
-import { PENGAJUAN_SEED } from '@/constants/pengajuan'
-import { http, modeApi } from './http'
-import type { Kategori, Pengajuan } from '@/types'
+import { SUBMISSION_SEED } from '@/constants/submissions'
+import { http, isApiMode } from './http'
+import type { Category, Submission } from '@/types'
 
 /**
- * Titik sambung ke backend. Sekarang setiap fungsi jatuh ke seed lokal;
- * begitu `VITE_API_BASE` diisi, panggilan HTTP-nya yang dipakai dan
- * komponen di atasnya tidak perlu diubah.
+ * Connection point to the backend. Every function falls back to the local seed
+ * for now; once `VITE_API_BASE` is filled in the HTTP calls take over and the
+ * components above need no change.
  */
-export const pengajuanApi = {
-  daftar: async (): Promise<readonly Pengajuan[]> => {
-    if (!modeApi()) return PENGAJUAN_SEED
-    return http.get<readonly Pengajuan[]>('/pengajuan')
+export const submissionApi = {
+  list: async (): Promise<readonly Submission[]> => {
+    if (!isApiMode()) return SUBMISSION_SEED
+    return http.get<readonly Submission[]>('/submissions')
   },
 
-  teruskan: async (kode: string): Promise<void> => {
-    if (!modeApi()) return
-    await http.post<void>(`/pengajuan/${kode}/teruskan`, {})
+  advance: async (code: string): Promise<void> => {
+    if (!isApiMode()) return
+    await http.post<void>(`/submissions/${code}/advance`, {})
   },
 
-  kembalikan: async (kode: string, komentar: readonly string[]): Promise<void> => {
-    if (!modeApi()) return
-    await http.post<void>(`/pengajuan/${kode}/kembalikan`, { komentar })
+  sendBack: async (code: string, comments: readonly string[]): Promise<void> => {
+    if (!isApiMode()) return
+    await http.post<void>(`/submissions/${code}/send-back`, { comments })
   },
 
-  buat: async (judul: string, kategori: Kategori): Promise<void> => {
-    if (!modeApi()) return
-    await http.post<void>('/pengajuan', { judul, kategori })
+  create: async (title: string, category: Category): Promise<void> => {
+    if (!isApiMode()) return
+    await http.post<void>('/submissions', { title, category })
   },
 }
 
-export default pengajuanApi
+export default submissionApi

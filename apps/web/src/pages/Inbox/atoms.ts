@@ -1,15 +1,15 @@
 import { atom } from 'jotai'
 
-export type TabKotak = 'tindakan' | 'jalan' | 'balik' | 'selesai'
+export type InboxTab = 'action' | 'running' | 'returned' | 'done'
 
-export const JUDUL_TAB: Readonly<Record<TabKotak, string>> = {
-  tindakan: 'Menunggu tindakan Anda',
-  jalan: 'Berjalan di meja lain',
-  balik: 'Dikembalikan dengan catatan',
-  selesai: 'Sudah selesai',
+export const TAB_TITLE: Readonly<Record<InboxTab, string>> = {
+  action: 'Menunggu tindakan Anda',
+  running: 'Berjalan di meja lain',
+  returned: 'Dikembalikan dengan catatan',
+  done: 'Sudah selesai',
 }
 
-export const tabAtom = atom<TabKotak>('tindakan')
+export const tabAtom = atom<InboxTab>('action')
 
-/** Modal "buat pengajuan" sedang terbuka. */
-export const buatTerbukaAtom = atom(false)
+/** The "create submission" modal is open. */
+export const createOpenAtom = atom(false)

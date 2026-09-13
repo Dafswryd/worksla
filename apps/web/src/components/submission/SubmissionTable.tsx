@@ -1,34 +1,35 @@
 import { useAtomValue } from 'jotai'
-import { lewatSla, tahapDari } from '@imeri/shared'
+import { isOverdue, stageAt } from '@imeri/shared'
 import { Chip, StatusChip } from '@/components/Chip'
-import { pemegang } from '@/helpers/pemantauan'
-import { alurAtom } from '@/stores/alurAtom'
-import type { Pengajuan, Tahap } from '@/types'
+import { CATEGORY_LABEL } from '@/constants/labels'
+import { holderOf } from '@/helpers/monitoring'
+import { flowAtom } from '@/stores/flowAtom'
+import type { Stage, Submission } from '@/types'
 
-interface PengajuanTableProps {
-  readonly daftar: readonly Pengajuan[]
-  readonly kodeAktif: string | null
-  readonly onBuka: (kode: string) => void
-  readonly kosong?: string
+interface SubmissionTableProps {
+  readonly list: readonly Submission[]
+  readonly activeCode: string | null
+  readonly onOpen: (code: string) => void
+  readonly emptyText?: string
 }
 
-/** Penanda SLA satu berkas: hari ke-n dari batas, diwarnai menurut sisa waktu. */
-function SlaSel({ pengajuan, tahapan }: { readonly pengajuan: Pengajuan; readonly tahapan: readonly Tahap[] }) {
-  if (pengajuan.status === 'selesai') return <span className="p-cell">—</span>
+/** SLA marker for one document: day n of the limit, coloured by time left. */
+function SlaCell({ submission, stages }: { readonly submission: Submission; readonly stages: readonly Stage[] }) {
+  if (submission.status === 'done') return <span className="p-cell">—</span>
 
-  const { sla } = tahapDari(tahapan, pengajuan.tahap)
+  const { sla } = stageAt(stages, submission.stageIndex)
   if (sla === null) return <span className="p-cell num">di pengaju</span>
 
-  const tone = pengajuan.hari > sla ? 'amber' : pengajuan.hari === sla ? 'slate' : 'green'
+  const tone = submission.daysInStage > sla ? 'amber' : submission.daysInStage === sla ? 'slate' : 'green'
   return (
-    <Chip tone={tone} angka>
-      hari {pengajuan.hari}/{sla}
+    <Chip tone={tone} numeric>
+      hari {submission.daysInStage}/{sla}
     </Chip>
   )
 }
 
-export function PengajuanTable({ daftar, kodeAktif, onBuka, kosong }: PengajuanTableProps) {
-  const { tahapan, rute } = useAtomValue(alurAtom)
+export function SubmissionTable({ list, activeCode, onOpen, emptyText }: SubmissionTableProps) {
+  const { stages, route } = useAtomValue(flowAtom)
 
   return (
     <>
@@ -40,56 +41,56 @@ export function PengajuanTable({ daftar, kodeAktif, onBuka, kosong }: PengajuanT
         <span>Status</span>
       </div>
 
-      {daftar.length === 0 ? (
-        <p className="p-empty">{kosong ?? 'Tidak ada berkas di tampilan ini.'}</p>
+      {list.length === 0 ? (
+        <p className="p-empty">{emptyText ?? 'Tidak ada berkas di tampilan ini.'}</p>
       ) : (
-        daftar.map((pengajuan) => {
-          const pegang = pemegang(pengajuan, tahapan, rute)
-          const titik =
-            pengajuan.status === 'selesai'
-              ? 'selesai'
-              : pengajuan.status === 'dikembalikan'
-                ? 'balik'
-                : lewatSla(pengajuan, tahapan)
-                  ? 'lewat'
-                  : 'jalan'
+        list.map((submission) => {
+          const holder = holderOf(submission, stages, route)
+          const dot =
+            submission.status === 'done'
+              ? 'done'
+              : submission.status === 'returned'
+                ? 'returned'
+                : isOverdue(submission, stages)
+                  ? 'overdue'
+                  : 'running'
 
           return (
             <button
               type="button"
-              key={pengajuan.kode}
-              className={kodeAktif === pengajuan.kode ? 'ptable-row is-open' : 'ptable-row'}
-              onClick={() => onBuka(pengajuan.kode)}
+              key={submission.code}
+              className={activeCode === submission.code ? 'ptable-row is-open' : 'ptable-row'}
+              onClick={() => onOpen(submission.code)}
             >
               <span className="p-main">
-                <span className={`p-dot ${titik}`} />
+                <span className={`p-dot ${dot}`} />
                 <span className="p-text">
-                  <span className="p-title">{pengajuan.judul}</span>
-                  <span className="p-kode num">
-                    {pengajuan.kode} · {pengajuan.pemohon} · {pengajuan.lampiran.length} lampiran
+                  <span className="p-title">{submission.title}</span>
+                  <span className="p-code num">
+                    {submission.code} · {submission.requester} · {submission.attachments.length} lampiran
                   </span>
                 </span>
               </span>
 
               <span className="p-cell col-kat">
-                {pengajuan.kategori}
-                <small>Cluster {pengajuan.cluster}</small>
+                {CATEGORY_LABEL[submission.category]}
+                <small>Cluster {submission.cluster}</small>
               </span>
 
               <span className="p-pos">
-                <span className="p-pos-av">{pegang.ini}</span>
+                <span className="p-pos-av">{holder.initials}</span>
                 <span className="p-cell">
-                  {pegang.nama}
-                  <small>{tahapDari(tahapan, pengajuan.tahap).aksi}</small>
+                  {holder.name}
+                  <small>{stageAt(stages, submission.stageIndex).action}</small>
                 </span>
               </span>
 
               <span>
-                <SlaSel pengajuan={pengajuan} tahapan={tahapan} />
+                <SlaCell submission={submission} stages={stages} />
               </span>
 
               <span className="col-status">
-                <StatusChip pengajuan={pengajuan} tahapan={tahapan} />
+                <StatusChip submission={submission} stages={stages} />
               </span>
             </button>
           )

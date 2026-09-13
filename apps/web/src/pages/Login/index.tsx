@@ -1,45 +1,45 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAtom } from 'jotai'
-import { pemantau } from '@imeri/shared'
-import { AkunSelect } from '@/components/AkunSelect'
+import { isObserver } from '@imeri/shared'
+import { AccountSelect } from '@/components/AccountSelect'
 import { Icon } from '@/components/Icon'
-import { peranDari } from '@/constants/peran'
-import { emailDari } from '@/helpers/format'
-import { sesiAtom } from '@/stores/sesiAtom'
+import { roleById } from '@/constants/roles'
+import { emailFor } from '@/helpers/format'
+import { sessionAtom } from '@/stores/sessionAtom'
 
-const JANJI = [
+const PROMISES = [
   {
-    ikon: 'inbox' as const,
-    judul: 'Bola tidak pernah hilang',
-    isi: 'Setiap perpindahan meja tercatat dengan nama dan waktu.',
+    icon: 'inbox' as const,
+    title: 'Bola tidak pernah hilang',
+    body: 'Setiap perpindahan meja tercatat dengan nama dan waktu.',
   },
   {
-    ikon: 'clock' as const,
-    judul: 'Batas waktu per tahap',
-    isi: 'Hitungan berjalan sejak berkas masuk, berhenti saat keluar.',
+    icon: 'clock' as const,
+    title: 'Batas waktu per tahap',
+    body: 'Hitungan berjalan sejak berkas masuk, berhenti saat keluar.',
   },
   {
-    ikon: 'clip' as const,
-    judul: 'Lampiran ikut sepanjang rute',
-    isi: 'Tanpa hard copy berpindah meja, paraf dan tanda tangan digital.',
+    icon: 'clip' as const,
+    title: 'Lampiran ikut sepanjang rute',
+    body: 'Tanpa hard copy berpindah meja, paraf dan tanda tangan digital.',
   },
 ]
 
 /**
- * Halaman masuk. Kata sandi tidak diperiksa — begitu backend siap, submit
- * memanggil authApi.masuk() dan hasilnya mengisi sesiAtom.
+ * Login screen. The password is not checked — once the backend is ready, submit
+ * calls authApi.signIn() and the result fills sessionAtom.
  */
 export default function Login() {
-  const [sesi, setSesi] = useAtom(sesiAtom)
-  const [peranId, setPeranId] = useState(sesi.peranId)
-  const [sandi, setSandi] = useState('prototipe')
+  const [session, setSession] = useAtom(sessionAtom)
+  const [roleId, setRoleId] = useState(session.roleId)
+  const [password, setPassword] = useState('prototipe')
   const navigate = useNavigate()
-  const peran = peranDari(peranId)
+  const role = roleById(roleId)
 
-  const masuk = () => {
-    setSesi({ masuk: true, peranId })
-    navigate(pemantau(peran) ? '/pemantauan' : '/')
+  const signIn = () => {
+    setSession({ loggedIn: true, roleId })
+    navigate(isObserver(role) ? '/monitoring' : '/')
   }
 
   return (
@@ -59,14 +59,14 @@ export default function Login() {
             kategorinya, ke Wadir untuk paraf, sampai tanda tangan Direktur.
           </p>
           <div className="login-points">
-            {JANJI.map((janji) => (
-              <div className="login-point" key={janji.judul}>
+            {PROMISES.map((promise) => (
+              <div className="login-point" key={promise.title}>
                 <span className="lp-ico">
-                  <Icon name={janji.ikon} size={16} strokeWidth={1.8} />
+                  <Icon name={promise.icon} size={16} strokeWidth={1.8} />
                 </span>
                 <span>
-                  <b>{janji.judul}</b>
-                  <span>{janji.isi}</span>
+                  <b>{promise.title}</b>
+                  <span>{promise.body}</span>
                 </span>
               </div>
             ))}
@@ -85,7 +85,7 @@ export default function Login() {
           className="login-card"
           onSubmit={(event) => {
             event.preventDefault()
-            masuk()
+            signIn()
           }}
         >
           <span className="proto-tag">
@@ -95,17 +95,17 @@ export default function Login() {
           <p className="sub">Gunakan email institusi yang terdaftar di cluster Anda.</p>
 
           <div className="field">
-            <label id="lb-akun">
+            <label id="lb-account">
               <Icon name="shield" size={11} strokeWidth={2} /> Masuk sebagai
             </label>
-            <AkunSelect nilai={peranId} onPilih={setPeranId} labelId="lb-akun" />
+            <AccountSelect value={roleId} onPick={setRoleId} labelId="lb-account" />
           </div>
 
           <div className="field">
             <label htmlFor="lg-mail">
               <Icon name="mail" size={11} strokeWidth={2} /> Email institusi
             </label>
-            <input id="lg-mail" type="email" readOnly value={emailDari(peran.nama)} autoComplete="username" />
+            <input id="lg-mail" type="email" readOnly value={emailFor(role.name)} autoComplete="username" />
           </div>
 
           <div className="field">
@@ -115,15 +115,15 @@ export default function Login() {
             <input
               id="lg-pass"
               type="password"
-              value={sandi}
+              value={password}
               autoComplete="current-password"
-              onChange={(event) => setSandi(event.target.value)}
+              onChange={(event) => setPassword(event.target.value)}
             />
           </div>
 
           <div className="login-row">
-            <label htmlFor="lg-ingat">
-              <input id="lg-ingat" type="checkbox" defaultChecked /> Ingat saya di perangkat ini
+            <label htmlFor="lg-remember">
+              <input id="lg-remember" type="checkbox" defaultChecked /> Ingat saya di perangkat ini
             </label>
             <button type="button" className="login-link">
               Lupa kata sandi?

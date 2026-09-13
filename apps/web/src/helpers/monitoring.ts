@@ -1,102 +1,100 @@
-import { lewatSla, tahapDari } from '@imeri/shared'
-import { peranDari } from '@/constants/peran'
-import { PEGAWAI } from '@/constants/pegawai'
-import { inisial, persen } from './format'
-import type { Pegawai, Pengajuan, Peran, RuteKategori, Tahap } from '@/types'
+import { isOverdue, stageAt } from '@imeri/shared'
+import { roleById } from '@/constants/roles'
+import { STAFF } from '@/constants/staff'
+import { initialsOf, percent } from './format'
+import type { CategoryRoute, Role, Stage, Staff, Submission } from '@/types'
 
-export interface Pemegang {
-  readonly nama: string
-  readonly ini: string
-  readonly jab: string
+export interface Holder {
+  readonly name: string
+  readonly initials: string
+  readonly position: string
 }
 
-/** Siapa yang memegang berkas ini sekarang. */
-export function pemegang(pengajuan: Pengajuan, tahapan: readonly Tahap[], rute: RuteKategori): Pemegang {
-  if (pengajuan.status === 'selesai') return { nama: '—', ini: '✓', jab: 'Arsip' }
+/** Who is holding this document right now. */
+export function holderOf(submission: Submission, stages: readonly Stage[], route: CategoryRoute): Holder {
+  if (submission.status === 'done') return { name: '—', initials: '✓', position: 'Arsip' }
 
-  const tahap = tahapDari(tahapan, pengajuan.tahap)
-  if (tahap.key === 'pengaju') {
-    return { nama: pengajuan.pemohon, ini: inisial(pengajuan.pemohon), jab: 'menunggu perbaikan' }
+  const stage = stageAt(stages, submission.stageIndex)
+  if (stage.key === 'submitter') {
+    return { name: submission.requester, initials: initialsOf(submission.requester), position: 'menunggu perbaikan' }
   }
-  if (tahap.key === 'sekret' || tahap.key === 'rekam') {
-    const sekret = peranDari(rute[pengajuan.kategori])
-    return { nama: sekret.nama, ini: sekret.ini, jab: sekret.jab }
+  if (stage.key === 'secretary' || stage.key === 'recording') {
+    const secretary = roleById(route[submission.category])
+    return { name: secretary.name, initials: secretary.initials, position: secretary.position }
   }
-  if (tahap.key === 'wadir') {
-    const wadir = peranDari('hendra')
-    return { nama: wadir.nama, ini: wadir.ini, jab: 'QC & paraf' }
+  if (stage.key === 'deputy') {
+    const deputy = roleById('hendra')
+    return { name: deputy.name, initials: deputy.initials, position: 'QC & paraf' }
   }
-  const direktur = peranDari('ratna')
-  return { nama: direktur.nama, ini: direktur.ini, jab: 'Persetujuan' }
+  const director = roleById('ratna')
+  return { name: director.name, initials: director.initials, position: 'Persetujuan' }
 }
 
-export interface RingkasanPantau {
-  readonly aktif: readonly Pengajuan[]
-  readonly telat: readonly Pengajuan[]
-  readonly dikembalikan: readonly Pengajuan[]
-  readonly selesai: readonly Pengajuan[]
-  readonly rasioTelat: number
-  readonly rasioBalik: number
+export interface MonitorSummary {
+  readonly active: readonly Submission[]
+  readonly overdue: readonly Submission[]
+  readonly returned: readonly Submission[]
+  readonly done: readonly Submission[]
+  readonly overdueRatio: number
+  readonly returnRatio: number
 }
 
-/** Angka-angka kepala papan pemantauan. */
-export function ringkasan(daftar: readonly Pengajuan[], tahapan: readonly Tahap[]): RingkasanPantau {
-  const aktif = daftar.filter((item) => item.status !== 'selesai')
-  const telat = aktif.filter((item) => lewatSla(item, tahapan))
+/** The headline numbers on the monitoring board. */
+export function summarize(list: readonly Submission[], stages: readonly Stage[]): MonitorSummary {
+  const active = list.filter((item) => item.status !== 'done')
+  const overdue = active.filter((item) => isOverdue(item, stages))
   return {
-    aktif,
-    telat,
-    dikembalikan: daftar.filter((item) => item.status === 'dikembalikan'),
-    selesai: daftar.filter((item) => item.status === 'selesai'),
-    rasioTelat: persen(telat.length, aktif.length),
-    rasioBalik: persen(daftar.filter((item) => item.status === 'dikembalikan').length, daftar.length),
+    active,
+    overdue,
+    returned: list.filter((item) => item.status === 'returned'),
+    done: list.filter((item) => item.status === 'done'),
+    overdueRatio: percent(overdue.length, active.length),
+    returnRatio: percent(list.filter((item) => item.status === 'returned').length, list.length),
   }
 }
 
-export interface BarisPenumpukan {
-  readonly tahap: Tahap
-  readonly indeks: number
-  readonly jumlah: number
-  readonly telat: number
+export interface BacklogRow {
+  readonly stage: Stage
+  readonly index: number
+  readonly count: number
+  readonly overdue: number
 }
 
-/** Berapa berkas menumpuk di tiap meja, dan berapa di antaranya lewat batas. */
-export function penumpukan(aktif: readonly Pengajuan[], tahapan: readonly Tahap[]): readonly BarisPenumpukan[] {
-  return tahapan.slice(0, tahapan.length - 1).map((tahap, indeks) => {
-    const di = aktif.filter((item) => item.tahap === indeks)
-    return { tahap, indeks, jumlah: di.length, telat: di.filter((item) => lewatSla(item, tahapan)).length }
+/** How many documents are piled up at each desk, and how many of those are late. */
+export function backlogByStage(active: readonly Submission[], stages: readonly Stage[]): readonly BacklogRow[] {
+  return stages.slice(0, stages.length - 1).map((stage, index) => {
+    const atDesk = active.filter((item) => item.stageIndex === index)
+    return { stage, index, count: atDesk.length, overdue: atDesk.filter((item) => isOverdue(item, stages)).length }
   })
 }
 
-export interface BarisBeban {
-  readonly pegawai: Pegawai
-  readonly jumlah: number
-  readonly telat: number
+export interface WorkloadRow {
+  readonly staff: Staff
+  readonly count: number
+  readonly overdue: number
 }
 
 /**
- * Beban tiap pegawai. Kolom "di meja" dihitung langsung dari daftar berkas,
- * bukan angka tersimpan — jadi selalu cocok dengan papan penumpukan.
+ * Workload per staff member. The "at desk" column is derived from the document
+ * list rather than a stored number, so it always agrees with the backlog board.
  */
-export function bebanKerja(
-  daftar: readonly Pengajuan[],
-  tahapan: readonly Tahap[],
-  rute: RuteKategori,
-  peran: Peran,
-): readonly BarisBeban[] {
-  const orang =
-    peran.tipe === 'monitor'
-      ? PEGAWAI.filter((item) => item.peran !== 'Pengaju' || item.cluster === peran.cluster)
-      : PEGAWAI
+export function workloadRows(
+  list: readonly Submission[],
+  stages: readonly Stage[],
+  route: CategoryRoute,
+  role: Role,
+): readonly WorkloadRow[] {
+  const people =
+    role.type === 'monitor' ? STAFF.filter((item) => item.type !== 'submitter' || item.scope === role.cluster) : STAFF
 
-  return orang.map((pegawai) => {
-    const dipegang = daftar.filter(
-      (item) => item.status !== 'selesai' && pemegang(item, tahapan, rute).nama === pegawai.nama,
+  return people.map((staff) => {
+    const held = list.filter(
+      (item) => item.status !== 'done' && holderOf(item, stages, route).name === staff.name,
     )
     return {
-      pegawai,
-      jumlah: dipegang.length,
-      telat: dipegang.filter((item) => lewatSla(item, tahapan)).length,
+      staff,
+      count: held.length,
+      overdue: held.filter((item) => isOverdue(item, stages)).length,
     }
   })
 }

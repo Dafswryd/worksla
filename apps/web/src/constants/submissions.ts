@@ -1,369 +1,405 @@
-import type { Cluster, JejakItem, Kategori, Lampiran, Pengajuan } from '@/types'
-import { PERAN, RUTE_AWAL, peranDari } from './peran'
+import type { Attachment, Category, Cluster, Submission, TrailEntry } from '@/types'
+import { DEFAULT_ROUTE, ROLES, roleById } from './roles'
 
-const dok = (nama: string, ukuran: string): Lampiran => ({
-  nama,
-  tipe: nama.endsWith('.xlsx') ? 'xls' : 'pdf',
-  ukuran,
+const doc = (name: string, size: string): Attachment => ({
+  name,
+  type: name.endsWith('.xlsx') ? 'xls' : 'pdf',
+  size,
 })
 
-/** Delapan berkas yang ditulis lengkap — dipakai sebagai contoh di layar detail. */
-const INTI: readonly Pengajuan[] = [
+/** Eight fully written documents — used as the worked examples on the detail screen. */
+const DETAILED: readonly Submission[] = [
   {
-    kode: 'PJK-2609-014',
-    judul: 'Pengadaan reagen PCR triwulan IV',
-    pemohon: 'Andi Prasetyo',
-    pemohonId: 'andi',
+    code: 'PJK-2609-014',
+    title: 'Pengadaan reagen PCR triwulan IV',
+    requester: 'Andi Prasetyo',
+    requesterId: 'andi',
     cluster: 'MedTech',
-    kategori: 'Keuangan',
-    dibuat: '9 Sep 2026',
-    tahap: 2,
-    hari: 2,
-    status: 'berjalan',
-    lampiran: [
-      dok('Nota dinas pengadaan reagen.pdf', '214 KB'),
-      dok('Rincian kebutuhan per unit.xlsx', '88 KB'),
-      dok('Perbandingan harga 3 vendor.xlsx', '132 KB'),
-      dok('Foto stok gudang.pdf', '1,4 MB'),
+    category: 'finance',
+    createdAt: '9 Sep 2026',
+    stageIndex: 2,
+    daysInStage: 2,
+    status: 'running',
+    attachments: [
+      doc('Nota dinas pengadaan reagen.pdf', '214 KB'),
+      doc('Rincian kebutuhan per unit.xlsx', '88 KB'),
+      doc('Perbandingan harga 3 vendor.xlsx', '132 KB'),
+      doc('Foto stok gudang.pdf', '1,4 MB'),
     ],
     checklist: [],
-    riwayat: [
-      { aktor: 'Andi Prasetyo', peran: 'Pengaju', aksi: 'mengirim pengajuan', waktu: '9 Sep · 09.14', jenis: 'up' },
-      { aktor: 'Sari Dewi', peran: 'Sekret Keuangan', aksi: 'meneruskan ke Wadir', waktu: '9 Sep · 15.40', jenis: 'ok' },
-    ],
-  },
-  {
-    kode: 'PJK-2609-009',
-    judul: 'Perjalanan dinas simposium onkologi',
-    pemohon: 'Rina Kartika',
-    pemohonId: 'rina',
-    cluster: 'HCRC',
-    kategori: 'Keuangan',
-    dibuat: '2 Sep 2026',
-    tahap: 3,
-    hari: 4,
-    status: 'berjalan',
-    lampiran: [
-      dok('Undangan simposium.pdf', '96 KB'),
-      dok('Surat tugas (draf).pdf', '74 KB'),
-      dok('Rincian biaya perjalanan.xlsx', '62 KB'),
-      dok('Tiket dan estimasi penginapan.pdf', '340 KB'),
-      dok('Agenda kegiatan 3 hari.pdf', '128 KB'),
-      dok('Daftar peserta.xlsx', '41 KB'),
-    ],
-    checklist: [],
-    riwayat: [
-      { aktor: 'Rina Kartika', peran: 'Pengaju', aksi: 'mengirim pengajuan', waktu: '2 Sep · 11.02', jenis: 'up' },
-      { aktor: 'Sari Dewi', peran: 'Sekret Keuangan', aksi: 'meneruskan ke Wadir', waktu: '3 Sep · 08.25', jenis: 'ok' },
+    history: [
+      { actor: 'Andi Prasetyo', role: 'Pengaju', action: 'mengirim pengajuan', time: '9 Sep · 09.14', kind: 'submit' },
       {
-        aktor: 'Hendra Wijaya',
-        peran: 'Wadir',
-        aksi: 'memberi paraf dan meneruskan ke Direktur',
-        waktu: '4 Sep · 16.10',
-        jenis: 'ok',
+        actor: 'Sari Dewi',
+        role: 'Sekret Keuangan',
+        action: 'meneruskan ke Wadir',
+        time: '9 Sep · 15.40',
+        kind: 'approve',
       },
     ],
   },
   {
-    kode: 'PJP-2609-021',
-    judul: 'Permohonan cuti tahunan',
-    pemohon: 'Rina Kartika',
-    pemohonId: 'rina',
+    code: 'PJK-2609-009',
+    title: 'Perjalanan dinas simposium onkologi',
+    requester: 'Rina Kartika',
+    requesterId: 'rina',
     cluster: 'HCRC',
-    kategori: 'Kepegawaian',
-    dibuat: '11 Sep 2026',
-    tahap: 0,
-    hari: 1,
-    status: 'dikembalikan',
-    lampiran: [dok('Form permohonan cuti.pdf', '58 KB'), dok('Rencana serah terima pekerjaan.pdf', '71 KB')],
-    checklist: [
-      { teks: 'Samakan tanggal mulai cuti di form dengan surat permohonan', done: true },
-      { teks: 'Lampirkan surat persetujuan atasan langsung', done: false },
-      { teks: 'Cantumkan nama pegawai pengganti selama cuti', done: false },
+    category: 'finance',
+    createdAt: '2 Sep 2026',
+    stageIndex: 3,
+    daysInStage: 4,
+    status: 'running',
+    attachments: [
+      doc('Undangan simposium.pdf', '96 KB'),
+      doc('Surat tugas (draf).pdf', '74 KB'),
+      doc('Rincian biaya perjalanan.xlsx', '62 KB'),
+      doc('Tiket dan estimasi penginapan.pdf', '340 KB'),
+      doc('Agenda kegiatan 3 hari.pdf', '128 KB'),
+      doc('Daftar peserta.xlsx', '41 KB'),
     ],
-    riwayat: [
-      { aktor: 'Rina Kartika', peran: 'Pengaju', aksi: 'mengirim pengajuan', waktu: '11 Sep · 08.40', jenis: 'up' },
+    checklist: [],
+    history: [
+      { actor: 'Rina Kartika', role: 'Pengaju', action: 'mengirim pengajuan', time: '2 Sep · 11.02', kind: 'submit' },
       {
-        aktor: 'Budi Santoso',
-        peran: 'Sekret Kepegawaian',
-        aksi: 'mengembalikan ke pengaju',
-        waktu: '11 Sep · 14.05',
-        jenis: 'no',
-        komentar:
+        actor: 'Sari Dewi',
+        role: 'Sekret Keuangan',
+        action: 'meneruskan ke Wadir',
+        time: '3 Sep · 08.25',
+        kind: 'approve',
+      },
+      {
+        actor: 'Hendra Wijaya',
+        role: 'Wadir',
+        action: 'memberi paraf dan meneruskan ke Direktur',
+        time: '4 Sep · 16.10',
+        kind: 'approve',
+      },
+    ],
+  },
+  {
+    code: 'PJP-2609-021',
+    title: 'Permohonan cuti tahunan',
+    requester: 'Rina Kartika',
+    requesterId: 'rina',
+    cluster: 'HCRC',
+    category: 'personnel',
+    createdAt: '11 Sep 2026',
+    stageIndex: 0,
+    daysInStage: 1,
+    status: 'returned',
+    attachments: [doc('Form permohonan cuti.pdf', '58 KB'), doc('Rencana serah terima pekerjaan.pdf', '71 KB')],
+    checklist: [
+      { text: 'Samakan tanggal mulai cuti di form dengan surat permohonan', done: true },
+      { text: 'Lampirkan surat persetujuan atasan langsung', done: false },
+      { text: 'Cantumkan nama pegawai pengganti selama cuti', done: false },
+    ],
+    history: [
+      { actor: 'Rina Kartika', role: 'Pengaju', action: 'mengirim pengajuan', time: '11 Sep · 08.40', kind: 'submit' },
+      {
+        actor: 'Budi Santoso',
+        role: 'Sekret Kepegawaian',
+        action: 'mengembalikan ke pengaju',
+        time: '11 Sep · 14.05',
+        kind: 'return',
+        comment:
           'Surat persetujuan atasan langsung belum dilampirkan, dan tanggal mulai cuti di form berbeda dengan yang tertulis di surat permohonan. Nama pegawai pengganti juga belum dicantumkan.',
       },
     ],
   },
   {
-    kode: 'PJK-2609-018',
-    judul: 'Penggantian biaya pelatihan Good Clinical Practice',
-    pemohon: 'Rina Kartika',
-    pemohonId: 'rina',
+    code: 'PJK-2609-018',
+    title: 'Penggantian biaya pelatihan Good Clinical Practice',
+    requester: 'Rina Kartika',
+    requesterId: 'rina',
     cluster: 'HCRC',
-    kategori: 'Keuangan',
-    dibuat: '11 Sep 2026',
-    tahap: 1,
-    hari: 1,
-    status: 'berjalan',
-    lampiran: [
-      dok('Kuitansi pelatihan.pdf', '188 KB'),
-      dok('Sertifikat peserta.pdf', '620 KB'),
-      dok('Rekap peserta dan biaya.xlsx', '54 KB'),
+    category: 'finance',
+    createdAt: '11 Sep 2026',
+    stageIndex: 1,
+    daysInStage: 1,
+    status: 'running',
+    attachments: [
+      doc('Kuitansi pelatihan.pdf', '188 KB'),
+      doc('Sertifikat peserta.pdf', '620 KB'),
+      doc('Rekap peserta dan biaya.xlsx', '54 KB'),
     ],
     checklist: [],
-    riwayat: [
-      { aktor: 'Rina Kartika', peran: 'Pengaju', aksi: 'mengirim pengajuan', waktu: '11 Sep · 16.22', jenis: 'up' },
+    history: [
+      { actor: 'Rina Kartika', role: 'Pengaju', action: 'mengirim pengajuan', time: '11 Sep · 16.22', kind: 'submit' },
     ],
   },
   {
-    kode: 'PJP-2609-024',
-    judul: 'Usulan mutasi analis laboratorium',
-    pemohon: 'Lestari Ayu',
-    pemohonId: 'lestari',
+    code: 'PJP-2609-024',
+    title: 'Usulan mutasi analis laboratorium',
+    requester: 'Lestari Ayu',
+    requesterId: 'lestari',
     cluster: 'Stem Cell',
-    kategori: 'Kepegawaian',
-    dibuat: '10 Sep 2026',
-    tahap: 2,
-    hari: 1,
-    status: 'berjalan',
-    lampiran: [
-      dok('Usulan mutasi.pdf', '102 KB'),
-      dok('Kajian kebutuhan formasi.pdf', '410 KB'),
-      dok('Riwayat penempatan.xlsx', '66 KB'),
-      dok('Persetujuan kepala cluster.pdf', '80 KB'),
-      dok('Daftar staf terdampak.xlsx', '48 KB'),
+    category: 'personnel',
+    createdAt: '10 Sep 2026',
+    stageIndex: 2,
+    daysInStage: 1,
+    status: 'running',
+    attachments: [
+      doc('Usulan mutasi.pdf', '102 KB'),
+      doc('Kajian kebutuhan formasi.pdf', '410 KB'),
+      doc('Riwayat penempatan.xlsx', '66 KB'),
+      doc('Persetujuan kepala cluster.pdf', '80 KB'),
+      doc('Daftar staf terdampak.xlsx', '48 KB'),
     ],
     checklist: [],
-    riwayat: [
-      { aktor: 'Lestari Ayu', peran: 'Pengaju', aksi: 'mengirim pengajuan', waktu: '10 Sep · 10.05', jenis: 'up' },
+    history: [
+      { actor: 'Lestari Ayu', role: 'Pengaju', action: 'mengirim pengajuan', time: '10 Sep · 10.05', kind: 'submit' },
       {
-        aktor: 'Budi Santoso',
-        peran: 'Sekret Kepegawaian',
-        aksi: 'meneruskan ke Wadir',
-        waktu: '11 Sep · 09.30',
-        jenis: 'ok',
+        actor: 'Budi Santoso',
+        role: 'Sekret Kepegawaian',
+        action: 'meneruskan ke Wadir',
+        time: '11 Sep · 09.30',
+        kind: 'approve',
       },
     ],
   },
   {
-    kode: 'PJU-2609-030',
-    judul: 'Perbaikan pendingin ruang kultur sel',
-    pemohon: 'Rina Kartika',
-    pemohonId: 'rina',
+    code: 'PJU-2609-030',
+    title: 'Perbaikan pendingin ruang kultur sel',
+    requester: 'Rina Kartika',
+    requesterId: 'rina',
     cluster: 'HCRC',
-    kategori: 'Umum',
-    dibuat: '10 Sep 2026',
-    tahap: 1,
-    hari: 2,
-    status: 'berjalan',
-    lampiran: [dok('Laporan kerusakan unit.pdf', '144 KB'), dok('Penawaran servis vendor.pdf', '226 KB')],
+    category: 'general',
+    createdAt: '10 Sep 2026',
+    stageIndex: 1,
+    daysInStage: 2,
+    status: 'running',
+    attachments: [doc('Laporan kerusakan unit.pdf', '144 KB'), doc('Penawaran servis vendor.pdf', '226 KB')],
     checklist: [],
-    riwayat: [
-      { aktor: 'Rina Kartika', peran: 'Pengaju', aksi: 'mengirim pengajuan', waktu: '10 Sep · 13.48', jenis: 'up' },
+    history: [
+      { actor: 'Rina Kartika', role: 'Pengaju', action: 'mengirim pengajuan', time: '10 Sep · 13.48', kind: 'submit' },
     ],
   },
   {
-    kode: 'PJU-2609-033',
-    judul: 'Pengadaan jas laboratorium petugas',
-    pemohon: 'Andi Prasetyo',
-    pemohonId: 'andi',
+    code: 'PJU-2609-033',
+    title: 'Pengadaan jas laboratorium petugas',
+    requester: 'Andi Prasetyo',
+    requesterId: 'andi',
     cluster: 'MedTech',
-    kategori: 'Umum',
-    dibuat: '4 Sep 2026',
-    tahap: 4,
-    hari: 1,
-    status: 'berjalan',
-    lampiran: [
-      dok('Rincian ukuran dan jumlah.xlsx', '39 KB'),
-      dok('Penawaran konveksi.pdf', '310 KB'),
-      dok('Lembar persetujuan direktur.pdf', '96 KB'),
+    category: 'general',
+    createdAt: '4 Sep 2026',
+    stageIndex: 4,
+    daysInStage: 1,
+    status: 'running',
+    attachments: [
+      doc('Rincian ukuran dan jumlah.xlsx', '39 KB'),
+      doc('Penawaran konveksi.pdf', '310 KB'),
+      doc('Lembar persetujuan direktur.pdf', '96 KB'),
     ],
     checklist: [],
-    riwayat: [
-      { aktor: 'Andi Prasetyo', peran: 'Pengaju', aksi: 'mengirim pengajuan', waktu: '4 Sep · 09.00', jenis: 'up' },
-      { aktor: 'Tuti Marlina', peran: 'Sekret Umum', aksi: 'meneruskan ke Wadir', waktu: '4 Sep · 14.12', jenis: 'ok' },
+    history: [
+      { actor: 'Andi Prasetyo', role: 'Pengaju', action: 'mengirim pengajuan', time: '4 Sep · 09.00', kind: 'submit' },
       {
-        aktor: 'Hendra Wijaya',
-        peran: 'Wadir',
-        aksi: 'memberi paraf dan meneruskan ke Direktur',
-        waktu: '8 Sep · 11.35',
-        jenis: 'ok',
+        actor: 'Tuti Marlina',
+        role: 'Sekret Umum',
+        action: 'meneruskan ke Wadir',
+        time: '4 Sep · 14.12',
+        kind: 'approve',
       },
       {
-        aktor: 'Ratna Puspita',
-        peran: 'Direktur',
-        aksi: 'menyetujui dan menandatangani',
-        waktu: '11 Sep · 10.18',
-        jenis: 'ok',
+        actor: 'Hendra Wijaya',
+        role: 'Wadir',
+        action: 'memberi paraf dan meneruskan ke Direktur',
+        time: '8 Sep · 11.35',
+        kind: 'approve',
+      },
+      {
+        actor: 'Ratna Puspita',
+        role: 'Direktur',
+        action: 'menyetujui dan menandatangani',
+        time: '11 Sep · 10.18',
+        kind: 'approve',
       },
     ],
   },
   {
-    kode: 'PJK-2608-097',
-    judul: 'Langganan lisensi perangkat lunak statistik',
-    pemohon: 'Dimas Saputra',
-    pemohonId: 'dimas',
+    code: 'PJK-2608-097',
+    title: 'Langganan lisensi perangkat lunak statistik',
+    requester: 'Dimas Saputra',
+    requesterId: 'dimas',
     cluster: 'Drug Development',
-    kategori: 'Keuangan',
-    dibuat: '21 Agu 2026',
-    tahap: 5,
-    hari: 0,
-    status: 'selesai',
-    lampiran: [
-      dok('Proposal perpanjangan lisensi.pdf', '290 KB'),
-      dok('Invoice vendor.pdf', '118 KB'),
-      dok('Perbandingan paket lisensi.xlsx', '77 KB'),
-      dok('Dokumen final bertanda tangan.pdf', '1,1 MB'),
+    category: 'finance',
+    createdAt: '21 Agu 2026',
+    stageIndex: 5,
+    daysInStage: 0,
+    status: 'done',
+    attachments: [
+      doc('Proposal perpanjangan lisensi.pdf', '290 KB'),
+      doc('Invoice vendor.pdf', '118 KB'),
+      doc('Perbandingan paket lisensi.xlsx', '77 KB'),
+      doc('Dokumen final bertanda tangan.pdf', '1,1 MB'),
     ],
     checklist: [],
-    riwayat: [
-      { aktor: 'Dimas Saputra', peran: 'Pengaju', aksi: 'mengirim pengajuan', waktu: '21 Agu · 09.10', jenis: 'up' },
-      { aktor: 'Sari Dewi', peran: 'Sekret Keuangan', aksi: 'meneruskan ke Wadir', waktu: '21 Agu · 15.02', jenis: 'ok' },
+    history: [
+      { actor: 'Dimas Saputra', role: 'Pengaju', action: 'mengirim pengajuan', time: '21 Agu · 09.10', kind: 'submit' },
       {
-        aktor: 'Hendra Wijaya',
-        peran: 'Wadir',
-        aksi: 'memberi paraf dan meneruskan ke Direktur',
-        waktu: '24 Agu · 10.40',
-        jenis: 'ok',
+        actor: 'Sari Dewi',
+        role: 'Sekret Keuangan',
+        action: 'meneruskan ke Wadir',
+        time: '21 Agu · 15.02',
+        kind: 'approve',
       },
       {
-        aktor: 'Ratna Puspita',
-        peran: 'Direktur',
-        aksi: 'menyetujui dan menandatangani',
-        waktu: '25 Agu · 16.55',
-        jenis: 'ok',
+        actor: 'Hendra Wijaya',
+        role: 'Wadir',
+        action: 'memberi paraf dan meneruskan ke Direktur',
+        time: '24 Agu · 10.40',
+        kind: 'approve',
       },
       {
-        aktor: 'Sari Dewi',
-        peran: 'Sekret Keuangan',
-        aksi: 'merekam hasil dan memberi tahu pengaju',
-        waktu: '26 Agu · 08.30',
-        jenis: 'ok',
+        actor: 'Ratna Puspita',
+        role: 'Direktur',
+        action: 'menyetujui dan menandatangani',
+        time: '25 Agu · 16.55',
+        kind: 'approve',
+      },
+      {
+        actor: 'Sari Dewi',
+        role: 'Sekret Keuangan',
+        action: 'merekam hasil dan memberi tahu pengaju',
+        time: '26 Agu · 08.30',
+        kind: 'approve',
       },
     ],
   },
 ]
 
-const LAMPIRAN_UMUM: Readonly<Record<Kategori, readonly string[]>> = {
-  Keuangan: ['Nota dinas pengajuan.pdf', 'Rincian biaya.xlsx', 'Penawaran vendor.pdf', 'Bukti pendukung.pdf'],
-  Kepegawaian: [
+const COMMON_ATTACHMENTS: Readonly<Record<Category, readonly string[]>> = {
+  finance: ['Nota dinas pengajuan.pdf', 'Rincian biaya.xlsx', 'Penawaran vendor.pdf', 'Bukti pendukung.pdf'],
+  personnel: [
     'Surat permohonan.pdf',
     'Persetujuan atasan langsung.pdf',
     'Riwayat kepegawaian.xlsx',
     'Lampiran pendukung.pdf',
   ],
-  Umum: ['Laporan kondisi.pdf', 'Penawaran vendor.pdf', 'Foto dokumentasi.pdf', 'Rincian kebutuhan.xlsx'],
+  general: ['Laporan kondisi.pdf', 'Penawaran vendor.pdf', 'Foto dokumentasi.pdf', 'Rincian kebutuhan.xlsx'],
 }
 
-/** Riwayat yang konsisten dengan tahap tempat berkas berhenti. */
-function jejakOtomatis(
-  pemohon: string,
-  kategori: Kategori,
-  tahap: number,
-  status: Pengajuan['status'],
-  waktu: string,
-): readonly JejakItem[] {
-  const sekret = peranDari(RUTE_AWAL[kategori])
-  const jejak: JejakItem[] = [{ aktor: pemohon, peran: 'Pengaju', aksi: 'mengirim pengajuan', waktu, jenis: 'up' }]
+/** History consistent with the stage the document stopped at. */
+function autoHistory(
+  requester: string,
+  category: Category,
+  stageIndex: number,
+  status: Submission['status'],
+  time: string,
+): readonly TrailEntry[] {
+  const secretary = roleById(DEFAULT_ROUTE[category])
+  const trail: TrailEntry[] = [
+    { actor: requester, role: 'Pengaju', action: 'mengirim pengajuan', time, kind: 'submit' },
+  ]
 
-  if (status === 'dikembalikan') {
-    jejak.push({
-      aktor: sekret.nama,
-      peran: sekret.jab,
-      aksi: 'mengembalikan ke pengaju',
-      waktu,
-      jenis: 'no',
-      komentar: 'Dokumen pendukung yang diminta belum lengkap.',
+  if (status === 'returned') {
+    trail.push({
+      actor: secretary.name,
+      role: secretary.position,
+      action: 'mengembalikan ke pengaju',
+      time,
+      kind: 'return',
+      comment: 'Dokumen pendukung yang diminta belum lengkap.',
     })
-    return jejak
+    return trail
   }
-  if (tahap >= 2) jejak.push({ aktor: sekret.nama, peran: sekret.jab, aksi: 'meneruskan ke Wadir', waktu, jenis: 'ok' })
-  if (tahap >= 3) {
-    jejak.push({
-      aktor: PERAN['hendra']?.nama ?? 'Wadir',
-      peran: 'Wadir',
-      aksi: 'memberi paraf dan meneruskan ke Direktur',
-      waktu,
-      jenis: 'ok',
-    })
-  }
-  if (tahap >= 4) {
-    jejak.push({
-      aktor: PERAN['ratna']?.nama ?? 'Direktur',
-      peran: 'Direktur',
-      aksi: 'menyetujui dan menandatangani',
-      waktu,
-      jenis: 'ok',
+  if (stageIndex >= 2) {
+    trail.push({
+      actor: secretary.name,
+      role: secretary.position,
+      action: 'meneruskan ke Wadir',
+      time,
+      kind: 'approve',
     })
   }
-  if (tahap >= 5) {
-    jejak.push({
-      aktor: sekret.nama,
-      peran: sekret.jab,
-      aksi: 'merekam hasil dan memberi tahu pengaju',
-      waktu,
-      jenis: 'ok',
+  if (stageIndex >= 3) {
+    trail.push({
+      actor: ROLES['hendra']?.name ?? 'Wadir',
+      role: 'Wadir',
+      action: 'memberi paraf dan meneruskan ke Direktur',
+      time,
+      kind: 'approve',
     })
   }
-  return jejak
+  if (stageIndex >= 4) {
+    trail.push({
+      actor: ROLES['ratna']?.name ?? 'Direktur',
+      role: 'Direktur',
+      action: 'menyetujui dan menandatangani',
+      time,
+      kind: 'approve',
+    })
+  }
+  if (stageIndex >= 5) {
+    trail.push({
+      actor: secretary.name,
+      role: secretary.position,
+      action: 'merekam hasil dan memberi tahu pengaju',
+      time,
+      kind: 'approve',
+    })
+  }
+  return trail
 }
 
-/** Berkas tambahan supaya papan pemantauan punya sebaran yang wajar. */
-function bikin(
-  kode: string,
-  judul: string,
-  pemohon: string,
-  pemohonId: string,
+/** Extra documents so the monitoring board has a realistic spread. */
+function make(
+  code: string,
+  title: string,
+  requester: string,
+  requesterId: string,
   cluster: Cluster,
-  kategori: Kategori,
-  dibuat: string,
-  tahap: number,
-  hari: number,
-  status: Pengajuan['status'],
-  jumlahLampiran: number,
-): Pengajuan {
+  category: Category,
+  createdAt: string,
+  stageIndex: number,
+  daysInStage: number,
+  status: Submission['status'],
+  attachmentCount: number,
+): Submission {
   return {
-    kode,
-    judul,
-    pemohon,
-    pemohonId,
+    code,
+    title,
+    requester,
+    requesterId,
     cluster,
-    kategori,
-    dibuat,
-    tahap,
-    hari,
+    category,
+    createdAt,
+    stageIndex,
+    daysInStage,
     status,
-    lampiran: LAMPIRAN_UMUM[kategori].slice(0, jumlahLampiran).map((nama) => dok(nama, `${48 + nama.length * 9} KB`)),
+    attachments: COMMON_ATTACHMENTS[category]
+      .slice(0, attachmentCount)
+      .map((name) => doc(name, `${48 + name.length * 9} KB`)),
     checklist:
-      status === 'dikembalikan'
+      status === 'returned'
         ? [
-            { teks: 'Lengkapi dokumen pendukung yang diminta Sekret', done: false },
-            { teks: 'Perbaiki rincian yang tidak sesuai', done: false },
+            { text: 'Lengkapi dokumen pendukung yang diminta Sekret', done: false },
+            { text: 'Perbaiki rincian yang tidak sesuai', done: false },
           ]
         : [],
-    riwayat: jejakOtomatis(pemohon, kategori, tahap, status, dibuat),
+    history: autoHistory(requester, category, stageIndex, status, createdAt),
   }
 }
 
-const TAMBAHAN: readonly Pengajuan[] = [
-  bikin('PJK-2609-011', 'Kalibrasi tahunan mikroskop konfokal', 'Dimas Saputra', 'dimas', 'Drug Development', 'Keuangan', '8 Sep 2026', 2, 3, 'berjalan', 3),
-  bikin('PJK-2609-006', 'Pemeliharaan kendaraan operasional spesimen', 'Andi Prasetyo', 'andi', 'MedTech', 'Keuangan', '5 Sep 2026', 4, 1, 'berjalan', 4),
-  bikin('PJP-2609-015', 'Usulan kenaikan jenjang jabatan peneliti', 'Lestari Ayu', 'lestari', 'Stem Cell', 'Kepegawaian', '9 Sep 2026', 1, 1, 'berjalan', 3),
-  bikin('PJP-2609-019', 'Permohonan izin belajar', 'Dimas Saputra', 'dimas', 'Drug Development', 'Kepegawaian', '10 Sep 2026', 0, 2, 'dikembalikan', 2),
-  bikin('PJU-2609-022', 'Penggantian lampu koridor laboratorium', 'Andi Prasetyo', 'andi', 'MedTech', 'Umum', '10 Sep 2026', 1, 3, 'berjalan', 2),
-  bikin('PJU-2609-027', 'Sewa tenda kegiatan bakti kesehatan', 'Rina Kartika', 'rina', 'HCRC', 'Umum', '9 Sep 2026', 2, 2, 'berjalan', 3),
-  bikin('PJU-2609-012', 'Perbaikan pintu ruang penyimpanan spesimen', 'Andi Prasetyo', 'andi', 'MedTech', 'Umum', '8 Sep 2026', 3, 3, 'berjalan', 2),
-  bikin('PJK-2609-002', 'Konsumsi rapat koordinasi peneliti', 'Rina Kartika', 'rina', 'HCRC', 'Keuangan', '1 Sep 2026', 5, 0, 'selesai', 3),
-  bikin('PJP-2609-005', 'Mutasi internal staf laboratorium', 'Dimas Saputra', 'dimas', 'Drug Development', 'Kepegawaian', '3 Sep 2026', 5, 0, 'selesai', 3),
-  bikin('PJK-2608-088', 'Pengadaan freezer penyimpanan −80°C', 'Andi Prasetyo', 'andi', 'MedTech', 'Keuangan', '18 Agu 2026', 5, 0, 'selesai', 4),
-  bikin('PJP-2608-091', 'Perpanjangan kontrak tenaga alih daya', 'Lestari Ayu', 'lestari', 'Stem Cell', 'Kepegawaian', '19 Agu 2026', 5, 0, 'selesai', 4),
-  bikin('PJU-2608-094', 'Pengecatan ulang koridor laboratorium', 'Rina Kartika', 'rina', 'HCRC', 'Umum', '20 Agu 2026', 5, 0, 'selesai', 3),
+const GENERATED: readonly Submission[] = [
+  make('PJK-2609-011', 'Kalibrasi tahunan mikroskop konfokal', 'Dimas Saputra', 'dimas', 'Drug Development', 'finance', '8 Sep 2026', 2, 3, 'running', 3),
+  make('PJK-2609-006', 'Pemeliharaan kendaraan operasional spesimen', 'Andi Prasetyo', 'andi', 'MedTech', 'finance', '5 Sep 2026', 4, 1, 'running', 4),
+  make('PJP-2609-015', 'Usulan kenaikan jenjang jabatan peneliti', 'Lestari Ayu', 'lestari', 'Stem Cell', 'personnel', '9 Sep 2026', 1, 1, 'running', 3),
+  make('PJP-2609-019', 'Permohonan izin belajar', 'Dimas Saputra', 'dimas', 'Drug Development', 'personnel', '10 Sep 2026', 0, 2, 'returned', 2),
+  make('PJU-2609-022', 'Penggantian lampu koridor laboratorium', 'Andi Prasetyo', 'andi', 'MedTech', 'general', '10 Sep 2026', 1, 3, 'running', 2),
+  make('PJU-2609-027', 'Sewa tenda kegiatan bakti kesehatan', 'Rina Kartika', 'rina', 'HCRC', 'general', '9 Sep 2026', 2, 2, 'running', 3),
+  make('PJU-2609-012', 'Perbaikan pintu ruang penyimpanan spesimen', 'Andi Prasetyo', 'andi', 'MedTech', 'general', '8 Sep 2026', 3, 3, 'running', 2),
+  make('PJK-2609-002', 'Konsumsi rapat koordinasi peneliti', 'Rina Kartika', 'rina', 'HCRC', 'finance', '1 Sep 2026', 5, 0, 'done', 3),
+  make('PJP-2609-005', 'Mutasi internal staf laboratorium', 'Dimas Saputra', 'dimas', 'Drug Development', 'personnel', '3 Sep 2026', 5, 0, 'done', 3),
+  make('PJK-2608-088', 'Pengadaan freezer penyimpanan −80°C', 'Andi Prasetyo', 'andi', 'MedTech', 'finance', '18 Agu 2026', 5, 0, 'done', 4),
+  make('PJP-2608-091', 'Perpanjangan kontrak tenaga alih daya', 'Lestari Ayu', 'lestari', 'Stem Cell', 'personnel', '19 Agu 2026', 5, 0, 'done', 4),
+  make('PJU-2608-094', 'Pengecatan ulang koridor laboratorium', 'Rina Kartika', 'rina', 'HCRC', 'general', '20 Agu 2026', 5, 0, 'done', 3),
 ]
 
-export const PENGAJUAN_SEED: readonly Pengajuan[] = [...INTI, ...TAMBAHAN]
+export const SUBMISSION_SEED: readonly Submission[] = [...DETAILED, ...GENERATED]
 
-export const AWALAN_KODE: Readonly<Record<Kategori, string>> = {
-  Keuangan: 'PJK',
-  Kepegawaian: 'PJP',
-  Umum: 'PJU',
+export const CODE_PREFIX: Readonly<Record<Category, string>> = {
+  finance: 'PJK',
+  personnel: 'PJP',
+  general: 'PJU',
 }

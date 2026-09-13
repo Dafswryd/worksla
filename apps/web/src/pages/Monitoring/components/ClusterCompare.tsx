@@ -1,15 +1,15 @@
 import { useAtomValue } from 'jotai'
-import { lewatSla } from '@imeri/shared'
+import { isOverdue } from '@imeri/shared'
 import { Icon } from '@/components/Icon'
-import { SEMUA_CLUSTER, STAT_CLUSTER } from '@/constants/pegawai'
-import { alurAtom } from '@/stores/alurAtom'
-import type { Pengajuan } from '@/types'
+import { ALL_CLUSTERS, CLUSTER_STATS } from '@/constants/staff'
+import { flowAtom } from '@/stores/flowAtom'
+import type { Submission } from '@/types'
 
-const KOLOM = 'minmax(0,1fr) 92px 92px 104px 108px'
+const COLUMNS = 'minmax(0,1fr) 92px 92px 104px 108px'
 
-/** Hanya untuk Super Admin — membandingkan empat cluster berdampingan. */
-export function AntarCluster({ daftar }: { readonly daftar: readonly Pengajuan[] }) {
-  const { tahapan } = useAtomValue(alurAtom)
+/** Super admin only — the four clusters side by side. */
+export function ClusterCompare({ list }: { readonly list: readonly Submission[] }) {
+  const { stages } = useAtomValue(flowAtom)
 
   return (
     <div className="card">
@@ -17,7 +17,7 @@ export function AntarCluster({ daftar }: { readonly daftar: readonly Pengajuan[]
         <span className="card-title">Perbandingan antar cluster</span>
       </div>
 
-      <div className="wtable-head" style={{ gridTemplateColumns: KOLOM }}>
+      <div className="wtable-head" style={{ gridTemplateColumns: COLUMNS }}>
         <span>Cluster</span>
         <span>Aktif</span>
         <span>Lewat SLA</span>
@@ -25,22 +25,22 @@ export function AntarCluster({ daftar }: { readonly daftar: readonly Pengajuan[]
         <span>Rata-rata selesai</span>
       </div>
 
-      {SEMUA_CLUSTER.map((cluster) => {
-        const milik = daftar.filter((item) => item.cluster === cluster)
-        const aktif = milik.filter((item) => item.status !== 'selesai')
-        const telat = aktif.filter((item) => lewatSla(item, tahapan)).length
-        const balik = milik.filter((item) => item.status === 'dikembalikan').length
+      {ALL_CLUSTERS.map((cluster) => {
+        const owned = list.filter((item) => item.cluster === cluster)
+        const active = owned.filter((item) => item.status !== 'done')
+        const overdue = active.filter((item) => isOverdue(item, stages)).length
+        const returned = owned.filter((item) => item.status === 'returned').length
 
         return (
-          <div className="wtable-row" style={{ gridTemplateColumns: KOLOM }} key={cluster}>
+          <div className="wtable-row" style={{ gridTemplateColumns: COLUMNS }} key={cluster}>
             <span className="w-who">
               <span className="w-name">{cluster}</span>
             </span>
-            <span className="w-num num">{aktif.length}</span>
-            <span className={telat > 0 ? 'w-num num bad' : 'w-num num zero'}>{telat}</span>
-            <span className={balik > 0 ? 'w-num num' : 'w-num num zero'}>{balik}</span>
+            <span className="w-num num">{active.length}</span>
+            <span className={overdue > 0 ? 'w-num num bad' : 'w-num num zero'}>{overdue}</span>
+            <span className={returned > 0 ? 'w-num num' : 'w-num num zero'}>{returned}</span>
             <span className="w-cell num" style={{ textAlign: 'center' }}>
-              {STAT_CLUSTER[cluster].rata.toFixed(1)} hari
+              {CLUSTER_STATS[cluster].avgDays.toFixed(1)} hari
             </span>
           </div>
         )

@@ -1,23 +1,23 @@
 import { useAtom } from 'jotai'
 import { Icon } from '@/components/Icon'
-import { PERAN } from '@/constants/peran'
-import { cariAtom } from '@/stores/uiAtom'
-import type { Peran } from '@/types'
+import { ROLES } from '@/constants/roles'
+import { searchAtom } from '@/stores/uiAtom'
+import type { Role } from '@/types'
 
 interface TopbarProps {
-  readonly akar: string
+  readonly root: string
   readonly breadcrumb: string
-  readonly peran: Peran
-  readonly onGantiPeran: (peranId: string) => void
+  readonly role: Role
+  readonly onSwitchRole: (roleId: string) => void
 }
 
-export function Topbar({ akar, breadcrumb, peran, onGantiPeran }: TopbarProps) {
-  const [cari, setCari] = useAtom(cariAtom)
+export function Topbar({ root, breadcrumb, role, onSwitchRole }: TopbarProps) {
+  const [search, setSearch] = useAtom(searchAtom)
 
   return (
     <header className="topbar">
       <div className="crumb">
-        <span className="crumb-root">{akar}</span>
+        <span className="crumb-root">{root}</span>
         <span className="slash">/</span>
         <span className="crumb-current">{breadcrumb}</span>
       </div>
@@ -28,25 +28,25 @@ export function Topbar({ akar, breadcrumb, peran, onGantiPeran }: TopbarProps) {
         </span>
         <input
           type="search"
-          value={cari}
+          value={search}
           placeholder="Cari judul atau nomor…"
           aria-label="Cari pengajuan"
-          onChange={(event) => setCari(event.target.value)}
+          onChange={(event) => setSearch(event.target.value)}
         />
       </div>
 
-      {/* Pengalih peran khusus prototipe — hilang begitu autentikasi nyata dipasang. */}
+      {/* Prototype-only role switcher — it goes away once real auth is wired in. */}
       <div className="role-pick">
-        <label htmlFor="peran">Masuk sebagai</label>
+        <label htmlFor="role">Masuk sebagai</label>
         <select
-          id="peran"
+          id="role"
           className="task-select"
-          value={peran.id}
-          onChange={(event) => onGantiPeran(event.target.value)}
+          value={role.id}
+          onChange={(event) => onSwitchRole(event.target.value)}
         >
-          {Object.values(PERAN).map((kandidat) => (
-            <option value={kandidat.id} key={kandidat.id}>
-              {kandidat.nama} — {kandidat.jab}
+          {Object.values(ROLES).map((candidate) => (
+            <option value={candidate.id} key={candidate.id}>
+              {candidate.name} — {candidate.position}
             </option>
           ))}
         </select>

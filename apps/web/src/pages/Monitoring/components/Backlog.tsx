@@ -1,33 +1,33 @@
 import { Icon } from '@/components/Icon'
-import type { BarisPenumpukan } from '@/helpers/pemantauan'
+import type { BacklogRow } from '@/helpers/monitoring'
 
 /**
- * Berapa berkas menumpuk di tiap meja. Panjang batang relatif terhadap meja
- * terpadat; porsi kuning adalah berkas yang sudah lewat batas waktunya.
+ * How many documents are piled up at each desk. Bar length is relative to the
+ * busiest desk; the amber portion is the documents already past their deadline.
  */
-export function Penumpukan({ baris }: { readonly baris: readonly BarisPenumpukan[] }) {
-  const puncak = Math.max(1, ...baris.map((item) => item.jumlah))
+export function Backlog({ rows }: { readonly rows: readonly BacklogRow[] }) {
+  const peak = Math.max(1, ...rows.map((item) => item.count))
 
   return (
     <>
       <div className="bn-list">
-        {baris.map((item) => (
-          <div className="bn-row" key={`${item.tahap.key}-${item.indeks}`}>
+        {rows.map((item) => (
+          <div className="bn-row" key={`${item.stage.key}-${item.index}`}>
             <span className="bn-name">
-              {item.tahap.meja}
-              <small>{item.tahap.aksi}</small>
+              {item.stage.desk}
+              <small>{item.stage.action}</small>
             </span>
             <span
               className="bn-bar"
               role="img"
-              aria-label={`${item.jumlah} berkas, ${item.telat} lewat batas`}
+              aria-label={`${item.count} berkas, ${item.overdue} lewat batas`}
             >
-              <i className="ok" style={{ width: `${((item.jumlah - item.telat) / puncak) * 100}%` }} />
-              <i className="late" style={{ width: `${(item.telat / puncak) * 100}%` }} />
+              <i className="ok" style={{ width: `${((item.count - item.overdue) / peak) * 100}%` }} />
+              <i className="late" style={{ width: `${(item.overdue / peak) * 100}%` }} />
             </span>
             <span className="bn-val num">
-              {item.jumlah}
-              <small>{item.tahap.sla === null ? 'tanpa batas' : `batas ${item.tahap.sla} hari`}</small>
+              {item.count}
+              <small>{item.stage.sla === null ? 'tanpa batas' : `batas ${item.stage.sla} hari`}</small>
             </span>
           </div>
         ))}

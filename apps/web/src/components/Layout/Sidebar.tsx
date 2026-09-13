@@ -1,29 +1,29 @@
 import { Icon } from '@/components/Icon'
-import type { IconName, Peran } from '@/types'
+import type { IconName, Role } from '@/types'
 
 export interface NavItem {
   readonly id: string
   readonly label: string
-  readonly ikon: IconName
+  readonly icon: IconName
   readonly to: string
   readonly badge?: number
-  readonly panas?: boolean
+  readonly hot?: boolean
 }
 
 export interface NavGroup {
-  readonly judul: string
+  readonly title: string
   readonly items: readonly NavItem[]
 }
 
 interface SidebarProps {
   readonly groups: readonly NavGroup[]
-  readonly aktif: string
-  readonly peran: Peran
+  readonly active: string
+  readonly role: Role
   readonly onNavigate: (to: string) => void
-  readonly onKeluar: () => void
+  readonly onSignOut: () => void
 }
 
-export function Sidebar({ groups, aktif, peran, onNavigate, onKeluar }: SidebarProps) {
+export function Sidebar({ groups, active, role, onNavigate, onSignOut }: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -33,22 +33,22 @@ export function Sidebar({ groups, aktif, peran, onNavigate, onKeluar }: SidebarP
         </div>
       </div>
 
-      {groups.map((group, indeks) => (
-        <div key={group.judul}>
-          {indeks > 0 ? <div className="nav-sep" /> : null}
-          <p className="nav-label">{group.judul}</p>
+      {groups.map((group, index) => (
+        <div key={group.title}>
+          {index > 0 ? <div className="nav-sep" /> : null}
+          <p className="nav-label">{group.title}</p>
           <ul className="nav">
             {group.items.map((item) => (
               <li key={item.id}>
                 <button
                   type="button"
-                  className={item.id === aktif ? 'is-active' : undefined}
+                  className={item.id === active ? 'is-active' : undefined}
                   onClick={() => onNavigate(item.to)}
                 >
-                  <Icon name={item.ikon} size={17} />
+                  <Icon name={item.icon} size={17} />
                   <span className="nav-text">{item.label}</span>
                   {item.badge ? (
-                    <span className={item.panas ? 'nav-badge hot num' : 'nav-badge num'}>{item.badge}</span>
+                    <span className={item.hot ? 'nav-badge hot num' : 'nav-badge num'}>{item.badge}</span>
                   ) : null}
                 </button>
               </li>
@@ -58,10 +58,10 @@ export function Sidebar({ groups, aktif, peran, onNavigate, onKeluar }: SidebarP
       ))}
 
       <div className="user-card">
-        <span className="avatar">{peran.ini}</span>
+        <span className="avatar">{role.initials}</span>
         <div className="user-meta">
-          <div className="user-name">{peran.nama}</div>
-          <div className="user-plan">{peran.jab}</div>
+          <div className="user-name">{role.name}</div>
+          <div className="user-plan">{role.position}</div>
         </div>
         <button
           type="button"
@@ -69,7 +69,7 @@ export function Sidebar({ groups, aktif, peran, onNavigate, onKeluar }: SidebarP
           title="Keluar"
           aria-label="Keluar"
           style={{ marginLeft: 'auto', flex: 'none' }}
-          onClick={onKeluar}
+          onClick={onSignOut}
         >
           <Icon name="logout" size={16} strokeWidth={2} />
         </button>

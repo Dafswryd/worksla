@@ -1,156 +1,158 @@
 import { useCallback } from 'react'
 import { atom, useAtom, useAtomValue } from 'jotai'
-import { tahapDari } from '@imeri/shared'
-import { AWALAN_KODE, PENGAJUAN_SEED } from '@/constants/pengajuan'
-import { JEJAK_MAJU } from '@/constants/tahapan'
-import { peranDari } from '@/constants/peran'
-import { waktuSekarang } from '@/helpers/format'
-import { alurAtom } from './alurAtom'
-import { peranAktifAtom } from './sesiAtom'
+import { stageAt } from '@imeri/shared'
+import { CODE_PREFIX, SUBMISSION_SEED } from '@/constants/submissions'
+import { ADVANCE_TRAIL } from '@/constants/stages'
+import { roleById } from '@/constants/roles'
+import { nowStamp } from '@/helpers/format'
+import { flowAtom } from './flowAtom'
+import { activeRoleAtom } from './sessionAtom'
 import { useToast } from './toastAtom'
-import type { Kategori, Pengajuan } from '@/types'
+import type { Category, Submission } from '@/types'
 
-export const pengajuanAtom = atom<readonly Pengajuan[]>(PENGAJUAN_SEED)
+export const submissionsAtom = atom<readonly Submission[]>(SUBMISSION_SEED)
 
-const ganti = (
-  daftar: readonly Pengajuan[],
-  kode: string,
-  ubah: (pengajuan: Pengajuan) => Pengajuan,
-): readonly Pengajuan[] => daftar.map((item) => (item.kode === kode ? ubah(item) : item))
+const replace = (
+  list: readonly Submission[],
+  code: string,
+  change: (submission: Submission) => Submission,
+): readonly Submission[] => list.map((item) => (item.code === code ? change(item) : item))
 
 /**
- * Semua aksi yang memindahkan berkas. Dikumpulkan di satu tempat supaya
- * aturan "mundur satu langkah" dan "checklist mengunci" tidak tersebar
- * di banyak komponen.
+ * Every action that moves a document, gathered in one place so the "one step
+ * back" and "checklist locks the door" rules do not get scattered across
+ * components.
  */
-export function useAlurAksi() {
-  const [daftar, setDaftar] = useAtom(pengajuanAtom)
-  const { tahapan, rute } = useAtomValue(alurAtom)
-  const peran = useAtomValue(peranAktifAtom)
+export function useFlowActions() {
+  const [list, setList] = useAtom(submissionsAtom)
+  const { stages, route } = useAtomValue(flowAtom)
+  const role = useAtomValue(activeRoleAtom)
   const toast = useToast()
 
-  /** Teruskan berkas ke meja berikutnya. */
-  const majukan = useCallback(
-    (kode: string) => {
-      const kini = daftar.find((item) => item.kode === kode)
-      if (!kini) return
-      const tahap = tahapDari(tahapan, kini.tahap)
-      const tahapBaru = kini.tahap + 1
-      const selesai = tahapBaru >= tahapan.length - 1
+  /** Pass the document on to the next desk. */
+  const advance = useCallback(
+    (code: string) => {
+      const current = list.find((item) => item.code === code)
+      if (!current) return
+      const stage = stageAt(stages, current.stageIndex)
+      const nextIndex = current.stageIndex + 1
+      const finished = nextIndex >= stages.length - 1
 
-      setDaftar((prev) =>
-        ganti(prev, kode, (item) => ({
+      setList((prev) =>
+        replace(prev, code, (item) => ({
           ...item,
-          tahap: tahapBaru,
-          hari: selesai ? 0 : 1,
-          status: selesai ? 'selesai' : 'berjalan',
+          stageIndex: nextIndex,
+          daysInStage: finished ? 0 : 1,
+          status: finished ? 'done' : 'running',
           checklist: [],
-          riwayat: [
-            ...item.riwayat,
+          history: [
+            ...item.history,
             {
-              aktor: peran.nama,
-              peran: peran.jab,
-              aksi: JEJAK_MAJU[tahap.key] ?? 'meneruskan berkas',
-              waktu: waktuSekarang(),
-              jenis: 'ok',
+              actor: role.name,
+              role: role.position,
+              action: ADVANCE_TRAIL[stage.key] ?? 'meneruskan berkas',
+              time: nowStamp(),
+              kind: 'approve',
             },
           ],
         })),
       )
 
       toast(
-        selesai
-          ? `${kode} selesai — pengaju sudah diberi tahu`
-          : `${kode} diteruskan ke ${tahapDari(tahapan, tahapBaru).meja}`,
+        finished
+          ? `${code} selesai — pengaju sudah diberi tahu`
+          : `${code} diteruskan ke ${stageAt(stages, nextIndex).desk}`,
       )
     },
-    [daftar, peran, setDaftar, tahapan, toast],
+    [list, role, setList, stages, toast],
   )
 
-  /** Kembalikan berkas satu langkah, dengan komentar yang jadi checklist. */
-  const kembalikan = useCallback(
-    (kode: string, komentar: string) => {
-      const poin = komentar
+  /** Send the document back one step, with comments that become a checklist. */
+  const sendBack = useCallback(
+    (code: string, comment: string) => {
+      const points = comment
         .split('\n')
-        .map((baris) => baris.trim())
-        .filter((baris) => baris !== '')
-      if (poin.length === 0) {
+        .map((line) => line.trim())
+        .filter((line) => line !== '')
+      if (points.length === 0) {
         toast('Alasan pengembalian wajib diisi', 'error')
         return
       }
-      const kini = daftar.find((item) => item.kode === kode)
-      if (!kini) return
-      const tujuan = tahapDari(tahapan, kini.tahap - 1)
+      const current = list.find((item) => item.code === code)
+      if (!current) return
+      const target = stageAt(stages, current.stageIndex - 1)
 
-      setDaftar((prev) =>
-        ganti(prev, kode, (item) => ({
+      setList((prev) =>
+        replace(prev, code, (item) => ({
           ...item,
-          tahap: Math.max(0, item.tahap - 1),
-          hari: 1,
-          status: 'dikembalikan',
-          checklist: poin.map((teks) => ({ teks, done: false })),
-          riwayat: [
-            ...item.riwayat,
+          stageIndex: Math.max(0, item.stageIndex - 1),
+          daysInStage: 1,
+          status: 'returned',
+          checklist: points.map((text) => ({ text, done: false })),
+          history: [
+            ...item.history,
             {
-              aktor: peran.nama,
-              peran: peran.jab,
-              aksi: `mengembalikan ke ${tujuan.meja}`,
-              waktu: waktuSekarang(),
-              jenis: 'no',
-              komentar: `${poin.join('. ')}.`,
+              actor: role.name,
+              role: role.position,
+              action: `mengembalikan ke ${target.desk}`,
+              time: nowStamp(),
+              kind: 'return',
+              comment: `${points.join('. ')}.`,
             },
           ],
         })),
       )
 
-      toast(`${kode} dikembalikan ke ${tujuan.meja} dengan ${poin.length} poin checklist`)
+      toast(`${code} dikembalikan ke ${target.desk} dengan ${points.length} poin checklist`)
     },
-    [daftar, peran, setDaftar, tahapan, toast],
+    [list, role, setList, stages, toast],
   )
 
-  /** Centang atau lepas satu poin checklist revisi. */
+  /** Tick or untick one revision checklist item. */
   const toggleChecklist = useCallback(
-    (kode: string, indeks: number) => {
-      setDaftar((prev) =>
-        ganti(prev, kode, (item) => ({
+    (code: string, index: number) => {
+      setList((prev) =>
+        replace(prev, code, (item) => ({
           ...item,
-          checklist: item.checklist.map((poin, i) => (i === indeks ? { ...poin, done: !poin.done } : poin)),
+          checklist: item.checklist.map((point, i) => (i === index ? { ...point, done: !point.done } : point)),
         })),
       )
     },
-    [setDaftar],
+    [setList],
   )
 
-  /** Pengajuan baru dari pengaju; langsung masuk ke sekret kategorinya. */
-  const buat = useCallback(
-    (judul: string, kategori: Kategori) => {
-      const kode = `${AWALAN_KODE[kategori]}-2609-0${40 + daftar.length}`
-      const waktu = waktuSekarang()
-      const baru: Pengajuan = {
-        kode,
-        judul: judul.trim() === '' ? 'Pengajuan tanpa judul' : judul.trim(),
-        pemohon: peran.nama,
-        pemohonId: peran.id,
+  /** A new submission from a submitter; it lands straight on their category's secretary. */
+  const create = useCallback(
+    (title: string, category: Category) => {
+      const code = `${CODE_PREFIX[category]}-2609-0${40 + list.length}`
+      const time = nowStamp()
+      const draft: Submission = {
+        code,
+        title: title.trim() === '' ? 'Pengajuan tanpa judul' : title.trim(),
+        requester: role.name,
+        requesterId: role.id,
         cluster: 'HCRC',
-        kategori,
-        dibuat: '12 Sep 2026',
-        tahap: 1,
-        hari: 1,
-        status: 'berjalan',
-        lampiran: [
-          { nama: 'Foto kondisi ruang arsip.pdf', tipe: 'pdf', ukuran: '820 KB' },
-          { nama: 'Estimasi harga rak.xlsx', tipe: 'xls', ukuran: '44 KB' },
+        category,
+        createdAt: '12 Sep 2026',
+        stageIndex: 1,
+        daysInStage: 1,
+        status: 'running',
+        attachments: [
+          { name: 'Foto kondisi ruang arsip.pdf', type: 'pdf', size: '820 KB' },
+          { name: 'Estimasi harga rak.xlsx', type: 'xls', size: '44 KB' },
         ],
         checklist: [],
-        riwayat: [{ aktor: peran.nama, peran: 'Pengaju', aksi: 'mengirim pengajuan', waktu, jenis: 'up' }],
+        history: [
+          { actor: role.name, role: 'Pengaju', action: 'mengirim pengajuan', time, kind: 'submit' },
+        ],
       }
 
-      setDaftar((prev) => [baru, ...prev])
-      toast(`${kode} terkirim ke ${peranDari(rute[kategori]).nama}`)
-      return kode
+      setList((prev) => [draft, ...prev])
+      toast(`${code} terkirim ke ${roleById(route[category]).name}`)
+      return code
     },
-    [daftar.length, peran, rute, setDaftar, toast],
+    [list.length, role, route, setList, toast],
   )
 
-  return { majukan, kembalikan, toggleChecklist, buat }
+  return { advance, sendBack, toggleChecklist, create }
 }

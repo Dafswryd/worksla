@@ -1,26 +1,27 @@
 import { useAtom, useSetAtom } from 'jotai'
 import { Chip } from '@/components/Chip'
 import { Icon } from '@/components/Icon'
-import { SEMUA_CLUSTER } from '@/constants/pegawai'
-import { SEMUA_KATEGORI } from '@/constants/peran'
-import { cariAtom, saringAtom } from '@/stores/uiAtom'
-import type { Cluster, Kategori, Peran } from '@/types'
+import { CATEGORY_LABEL } from '@/constants/labels'
+import { ALL_CLUSTERS } from '@/constants/staff'
+import { ALL_CATEGORIES } from '@/constants/roles'
+import { filtersAtom, searchAtom } from '@/stores/uiAtom'
+import type { Category, Cluster, Role } from '@/types'
 
 interface FilterBarProps {
-  readonly peran: Peran
+  readonly role: Role
 }
 
 /**
- * Saringan kategori dan cluster. Sekret terkunci ke kategorinya dan monitor
- * terkunci ke clusternya — penguncian itu bagian dari aturan, bukan sekadar
- * kenyamanan, jadi kontrolnya dinonaktifkan dan alasannya ditulis.
+ * Category and cluster filters. A secretary is locked to their category and a
+ * monitor to their cluster — that lock is part of the rules rather than a mere
+ * convenience, so the control is disabled and the reason is spelled out.
  */
-export function FilterBar({ peran }: FilterBarProps) {
-  const [saring, setSaring] = useAtom(saringAtom)
-  const setCari = useSetAtom(cariAtom)
+export function FilterBar({ role }: FilterBarProps) {
+  const [filters, setFilters] = useAtom(filtersAtom)
+  const setSearch = useSetAtom(searchAtom)
 
-  const kunciKategori = peran.tipe === 'sekret'
-  const kunciCluster = peran.tipe === 'monitor'
+  const categoryLocked = role.type === 'secretary'
+  const clusterLocked = role.type === 'monitor'
 
   return (
     <div className="filterbar">
@@ -31,14 +32,14 @@ export function FilterBar({ peran }: FilterBarProps) {
       <select
         className="task-select"
         aria-label="Saring kategori"
-        disabled={kunciKategori}
-        value={kunciKategori ? (peran.kategori ?? 'semua') : saring.kategori}
-        onChange={(event) => setSaring({ ...saring, kategori: event.target.value as Kategori | 'semua' })}
+        disabled={categoryLocked}
+        value={categoryLocked ? (role.category ?? 'all') : filters.category}
+        onChange={(event) => setFilters({ ...filters, category: event.target.value as Category | 'all' })}
       >
-        <option value="semua">Semua kategori</option>
-        {SEMUA_KATEGORI.map((kategori) => (
-          <option value={kategori} key={kategori}>
-            {kategori}
+        <option value="all">Semua kategori</option>
+        {ALL_CATEGORIES.map((category) => (
+          <option value={category} key={category}>
+            {CATEGORY_LABEL[category]}
           </option>
         ))}
       </select>
@@ -46,32 +47,32 @@ export function FilterBar({ peran }: FilterBarProps) {
       <select
         className="task-select"
         aria-label="Saring cluster"
-        disabled={kunciCluster}
-        value={kunciCluster ? (peran.cluster ?? 'semua') : saring.cluster}
-        onChange={(event) => setSaring({ ...saring, cluster: event.target.value as Cluster | 'semua' })}
+        disabled={clusterLocked}
+        value={clusterLocked ? (role.cluster ?? 'all') : filters.cluster}
+        onChange={(event) => setFilters({ ...filters, cluster: event.target.value as Cluster | 'all' })}
       >
-        <option value="semua">Semua cluster</option>
-        {SEMUA_CLUSTER.map((cluster) => (
+        <option value="all">Semua cluster</option>
+        {ALL_CLUSTERS.map((cluster) => (
           <option value={cluster} key={cluster}>
             {cluster}
           </option>
         ))}
       </select>
 
-      {kunciKategori ? (
+      {categoryLocked ? (
         <Chip tone="blue">
           <Icon name="people" size={12} strokeWidth={2} />
-          &nbsp; Terkunci ke kategori {peran.kategori}
+          &nbsp; Terkunci ke kategori {role.category ? CATEGORY_LABEL[role.category] : ''}
         </Chip>
       ) : null}
-      {kunciCluster ? <Chip tone="blue">Terkunci ke Cluster {peran.cluster}</Chip> : null}
+      {clusterLocked ? <Chip tone="blue">Terkunci ke Cluster {role.cluster}</Chip> : null}
 
       <button
         type="button"
         className="filter-reset"
         onClick={() => {
-          setSaring({ kategori: 'semua', cluster: 'semua' })
-          setCari('')
+          setFilters({ category: 'all', cluster: 'all' })
+          setSearch('')
         }}
       >
         Atur ulang

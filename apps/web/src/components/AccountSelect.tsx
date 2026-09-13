@@ -1,29 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '@/components/Icon'
-import { AKUN_OPERASIONAL, AKUN_PEMANTAUAN, peranDari } from '@/constants/peran'
+import { OBSERVER_ACCOUNTS, OPERATIONAL_ACCOUNTS, roleById } from '@/constants/roles'
 
-interface AkunSelectProps {
-  readonly nilai: string
-  readonly onPilih: (peranId: string) => void
+interface AccountSelectProps {
+  readonly value: string
+  readonly onPick: (roleId: string) => void
   readonly labelId: string
 }
 
 /**
- * Pemilih akun. Bukan <select> bawaan karena tiap opsi perlu membawa
- * avatar, jabatan, dan penanda terpilih.
+ * Account picker. Not a native <select> because each option has to carry an
+ * avatar, a job title, and a selected marker.
  */
-export function AkunSelect({ nilai, onPilih, labelId }: AkunSelectProps) {
-  const [terbuka, setTerbuka] = useState(false)
+export function AccountSelect({ value, onPick, labelId }: AccountSelectProps) {
+  const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
-  const terpilih = peranDari(nilai)
+  const selected = roleById(value)
 
   useEffect(() => {
-    if (!terbuka) return
+    if (!open) return
     const onDown = (event: MouseEvent) => {
-      if (!wrapRef.current?.contains(event.target as Node)) setTerbuka(false)
+      if (!wrapRef.current?.contains(event.target as Node)) setOpen(false)
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setTerbuka(false)
+      if (event.key === 'Escape') setOpen(false)
     }
     document.addEventListener('mousedown', onDown)
     window.addEventListener('keydown', onKey)
@@ -31,29 +31,29 @@ export function AkunSelect({ nilai, onPilih, labelId }: AkunSelectProps) {
       document.removeEventListener('mousedown', onDown)
       window.removeEventListener('keydown', onKey)
     }
-  }, [terbuka])
+  }, [open])
 
-  const opsi = (id: string) => {
-    const peran = peranDari(id)
-    const aktif = peran.id === nilai
+  const option = (id: string) => {
+    const role = roleById(id)
+    const active = role.id === value
     return (
       <button
         type="button"
-        key={peran.id}
-        className={aktif ? 'sel-opt is-on' : 'sel-opt'}
+        key={role.id}
+        className={active ? 'sel-opt is-on' : 'sel-opt'}
         role="option"
-        aria-selected={aktif}
+        aria-selected={active}
         onClick={() => {
-          onPilih(peran.id)
-          setTerbuka(false)
+          onPick(role.id)
+          setOpen(false)
         }}
       >
-        <span className="acc-av">{peran.ini}</span>
+        <span className="acc-av">{role.initials}</span>
         <span className="acc-meta">
-          <span className="acc-name">{peran.nama}</span>
-          <span className="acc-jab">{peran.jab}</span>
+          <span className="acc-name">{role.name}</span>
+          <span className="acc-position">{role.position}</span>
         </span>
-        {aktif ? (
+        {active ? (
           <span className="acc-tick">
             <Icon name="check" size={16} strokeWidth={2} />
           </span>
@@ -66,28 +66,28 @@ export function AkunSelect({ nilai, onPilih, labelId }: AkunSelectProps) {
     <div className="sel-wrap" ref={wrapRef}>
       <button
         type="button"
-        className={terbuka ? 'sel-trigger is-open' : 'sel-trigger'}
+        className={open ? 'sel-trigger is-open' : 'sel-trigger'}
         aria-haspopup="listbox"
-        aria-expanded={terbuka}
+        aria-expanded={open}
         aria-labelledby={labelId}
-        onClick={() => setTerbuka((prev) => !prev)}
+        onClick={() => setOpen((prev) => !prev)}
       >
-        <span className="acc-av">{terpilih.ini}</span>
+        <span className="acc-av">{selected.initials}</span>
         <span className="acc-meta">
-          <span className="acc-name">{terpilih.nama}</span>
-          <span className="acc-jab">{terpilih.jab}</span>
+          <span className="acc-name">{selected.name}</span>
+          <span className="acc-position">{selected.position}</span>
         </span>
         <span className="sel-chev">
           <Icon name="chevronDown" size={16} strokeWidth={2} />
         </span>
       </button>
 
-      {terbuka ? (
+      {open ? (
         <div className="sel-pop" role="listbox" aria-labelledby={labelId}>
           <p className="sel-group">Meja operasional</p>
-          {AKUN_OPERASIONAL.map(opsi)}
+          {OPERATIONAL_ACCOUNTS.map(option)}
           <p className="sel-group">Pemantauan</p>
-          {AKUN_PEMANTAUAN.map(opsi)}
+          {OBSERVER_ACCOUNTS.map(option)}
         </div>
       ) : null}
     </div>

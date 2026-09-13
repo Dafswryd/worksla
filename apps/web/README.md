@@ -1,17 +1,22 @@
 # @imeri/web
 
-Antarmuka sistem pengajuan dokumen IMERI.
+Interface for the IMERI document submission system.
 
 ```
 src/
-  api/          sambungan ke backend (masih memakai seed lokal)
-  components/   komponen lintas halaman + kerangka aplikasi (Layout)
-  constants/    data seed: peran, tahapan, pengajuan, pegawai
-  helpers/      turunan murni dari data (format, ringkasan pemantauan)
-  pages/        satu folder per halaman; komponen khusus halaman di dalamnya
-  router/       daftar rute
-  stores/       state global (jotai)
-  styles/       globals.css — token & kelas komponen
+  api/          backend connection (still backed by the local seed)
+  components/   cross-page components + the app shell (Layout)
+  constants/    seed data: roles, stages, submissions, staff, labels
+  helpers/      pure derivations from the data (format, monitoring summaries)
+  pages/        one folder per page; page-specific components live inside
+  router/       route table
+  stores/       global state (jotai)
+  styles/       globals.css — tokens & component classes
 ```
 
-Aturan alur yang dipakai bersama backend nanti ada di `packages/shared/src/alur.ts`.
+The flow rules shared with the future backend live in
+`packages/shared/src/flow.ts`.
+
+All identifiers, file names, and comments are English. Every user-facing string
+stays Indonesian — enum values that appear on screen are translated through
+`constants/labels.ts` rather than being stored in Indonesian.

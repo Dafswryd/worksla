@@ -1,17 +1,17 @@
 import { atom } from 'jotai'
-import { peranDari } from '@/constants/peran'
-import type { Peran } from '@/types'
+import { roleById } from '@/constants/roles'
+import type { Role } from '@/types'
 
 /**
- * Sesi prototipe: satu peran aktif, tanpa token. Saat backend siap, atom ini
- * diisi dari `/auth/me` dan `peranId` diganti id pengguna sebenarnya.
+ * Prototype session: one active role, no token. Once the backend is ready this
+ * atom is filled from `/auth/me` and `roleId` becomes the real user id.
  */
-export interface SesiState {
-  readonly masuk: boolean
-  readonly peranId: string
+export interface SessionState {
+  readonly loggedIn: boolean
+  readonly roleId: string
 }
 
-export const sesiAtom = atom<SesiState>({ masuk: false, peranId: 'sari' })
+export const sessionAtom = atom<SessionState>({ loggedIn: false, roleId: 'sari' })
 
-/** Peran yang sedang aktif. */
-export const peranAktifAtom = atom<Peran>((get) => peranDari(get(sesiAtom).peranId))
+/** The currently active role. */
+export const activeRoleAtom = atom<Role>((get) => roleById(get(sessionAtom).roleId))

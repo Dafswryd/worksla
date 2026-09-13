@@ -1,7 +1,7 @@
-let urutan = 0
+let counter = 0
 
-/** Id pendek untuk elemen sementara (toast, baris baru). */
+/** Short id for ephemeral elements (toasts, new rows). */
 export const newId = (): string => {
-  urutan += 1
-  return `id-${Date.now().toString(36)}-${urutan}`
+  counter += 1
+  return `id-${Date.now().toString(36)}-${counter}`
 }

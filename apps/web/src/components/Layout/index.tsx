@@ -1,117 +1,119 @@
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { memegang, pemantau, terlihat } from '@imeri/shared'
+import { isHolder, isObserver, isVisible } from '@imeri/shared'
 import { Toaster } from '@/components/Toaster'
-import { alurAtom } from '@/stores/alurAtom'
-import { pengajuanAtom } from '@/stores/pengajuanAtom'
-import { peranAktifAtom, sesiAtom } from '@/stores/sesiAtom'
-import { berkasTerbukaAtom, cariAtom, saringAtom } from '@/stores/uiAtom'
+import { flowAtom } from '@/stores/flowAtom'
+import { submissionsAtom } from '@/stores/submissionAtom'
+import { activeRoleAtom, sessionAtom } from '@/stores/sessionAtom'
+import { filtersAtom, openCodeAtom, searchAtom } from '@/stores/uiAtom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import type { NavGroup } from './Sidebar'
 
-/** Judul breadcrumb per rute. */
+/** Breadcrumb title per route. */
 const CRUMB: Readonly<Record<string, string>> = {
   '/': 'Kotak masuk',
-  '/berkas': 'Semua berkas',
-  '/pemantauan': 'Ringkasan',
-  '/beban': 'Beban kerja',
-  '/aturan': 'Aturan alur',
+  '/documents': 'Semua berkas',
+  '/monitoring': 'Ringkasan',
+  '/workload': 'Beban kerja',
+  '/flow-rules': 'Aturan alur',
 }
 
 const Layout = () => {
-  const [sesi, setSesi] = useAtom(sesiAtom)
-  const peran = useAtomValue(peranAktifAtom)
-  const daftar = useAtomValue(pengajuanAtom)
-  const { tahapan } = useAtomValue(alurAtom)
-  const setCari = useSetAtom(cariAtom)
-  const setSaring = useSetAtom(saringAtom)
-  const setTerbuka = useSetAtom(berkasTerbukaAtom)
+  const [session, setSession] = useAtom(sessionAtom)
+  const role = useAtomValue(activeRoleAtom)
+  const list = useAtomValue(submissionsAtom)
+  const { stages } = useAtomValue(flowAtom)
+  const setSearch = useSetAtom(searchAtom)
+  const setFilters = useSetAtom(filtersAtom)
+  const setOpenCode = useSetAtom(openCodeAtom)
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
-  // Seluruh aplikasi ada di balik halaman masuk.
-  if (!sesi.masuk) return <Navigate to="/login" replace />
+  // The whole app sits behind the login screen.
+  if (!session.loggedIn) return <Navigate to="/login" replace />
 
-  const dalamLingkup = daftar.filter((item) => terlihat(item, peran))
-  const perluSaya = dalamLingkup.filter((item) => memegang(item, peran, tahapan)).length
-  const selesai = dalamLingkup.filter((item) => item.status === 'selesai').length
-  const memantau = pemantau(peran)
+  const inScope = list.filter((item) => isVisible(item, role))
+  const mine = inScope.filter((item) => isHolder(item, role, stages)).length
+  const done = inScope.filter((item) => item.status === 'done').length
+  const observing = isObserver(role)
 
-  const groups: readonly NavGroup[] = memantau
+  const groups: readonly NavGroup[] = observing
     ? [
         {
-          judul: peran.tipe === 'admin' ? 'Pemantauan pusat' : `Cluster ${peran.cluster ?? ''}`,
+          title: role.type === 'admin' ? 'Pemantauan pusat' : `Cluster ${role.cluster ?? ''}`,
           items: [
-            { id: 'pemantauan', label: 'Ringkasan', ikon: 'chart', to: '/pemantauan' },
+            { id: 'monitoring', label: 'Ringkasan', icon: 'chart', to: '/monitoring' },
             {
-              id: 'berkas',
-              label: peran.tipe === 'admin' ? 'Semua berkas' : 'Berkas cluster',
-              ikon: 'file',
-              to: '/berkas',
-              badge: dalamLingkup.length,
+              id: 'documents',
+              label: role.type === 'admin' ? 'Semua berkas' : 'Berkas cluster',
+              icon: 'file',
+              to: '/documents',
+              badge: inScope.length,
             },
-            { id: 'beban', label: 'Beban kerja', ikon: 'people', to: '/beban' },
+            { id: 'workload', label: 'Beban kerja', icon: 'people', to: '/workload' },
           ],
         },
-        ...(peran.tipe === 'admin'
+        ...(role.type === 'admin'
           ? [
               {
-                judul: 'Administrasi',
-                items: [{ id: 'aturan' as const, label: 'Aturan alur', ikon: 'gear' as const, to: '/aturan' }],
+                title: 'Administrasi',
+                items: [
+                  { id: 'flow-rules' as const, label: 'Aturan alur', icon: 'gear' as const, to: '/flow-rules' },
+                ],
               },
             ]
           : []),
       ]
     : [
         {
-          judul: 'Meja kerja',
+          title: 'Meja kerja',
           items: [
-            { id: 'kotak', label: 'Kotak masuk', ikon: 'inbox', to: '/', badge: perluSaya, panas: perluSaya > 0 },
-            { id: 'berkas', label: 'Semua berkas', ikon: 'file', to: '/berkas', badge: dalamLingkup.length },
-            { id: 'arsip', label: 'Arsip', ikon: 'archive', to: '/berkas', badge: selesai },
+            { id: 'inbox', label: 'Kotak masuk', icon: 'inbox', to: '/', badge: mine, hot: mine > 0 },
+            { id: 'documents', label: 'Semua berkas', icon: 'file', to: '/documents', badge: inScope.length },
+            { id: 'archive', label: 'Arsip', icon: 'archive', to: '/documents', badge: done },
           ],
         },
       ]
 
-  const aktif =
+  const active =
     pathname === '/'
-      ? 'kotak'
-      : pathname.startsWith('/pemantauan')
-        ? 'pemantauan'
-        : pathname.startsWith('/beban')
-          ? 'beban'
-          : pathname.startsWith('/aturan')
-            ? 'aturan'
-            : pathname.startsWith('/berkas')
-              ? 'berkas'
+      ? 'inbox'
+      : pathname.startsWith('/monitoring')
+        ? 'monitoring'
+        : pathname.startsWith('/workload')
+          ? 'workload'
+          : pathname.startsWith('/flow-rules')
+            ? 'flow-rules'
+            : pathname.startsWith('/documents')
+              ? 'documents'
               : ''
 
   return (
     <div className="app">
       <Sidebar
         groups={groups}
-        aktif={aktif}
-        peran={peran}
+        active={active}
+        role={role}
         onNavigate={(to) => navigate(to)}
-        onKeluar={() => {
-          setTerbuka(null)
-          setSesi({ ...sesi, masuk: false })
+        onSignOut={() => {
+          setOpenCode(null)
+          setSession({ ...session, loggedIn: false })
           navigate('/login')
         }}
       />
 
       <main className="main">
         <Topbar
-          akar={memantau ? 'Pemantauan' : 'Pengajuan'}
+          root={observing ? 'Pemantauan' : 'Pengajuan'}
           breadcrumb={CRUMB[pathname] ?? 'Halaman'}
-          peran={peran}
-          onGantiPeran={(peranId) => {
-            // Ganti peran = ganti lingkup; saringan dan panel detail ikut direset.
-            setSesi({ ...sesi, peranId })
-            setCari('')
-            setSaring({ kategori: 'semua', cluster: 'semua' })
-            setTerbuka(null)
+          role={role}
+          onSwitchRole={(roleId) => {
+            // Switching role switches scope; filters and the detail panel reset with it.
+            setSession({ ...session, roleId })
+            setSearch('')
+            setFilters({ category: 'all', cluster: 'all' })
+            setOpenCode(null)
             navigate('/')
           }}
         />

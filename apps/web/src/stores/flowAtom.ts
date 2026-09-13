@@ -1,34 +1,34 @@
 import { atom } from 'jotai'
-import { RUTE_AWAL } from '@/constants/peran'
-import { TAHAPAN_AWAL } from '@/constants/tahapan'
-import type { Kategori, RuteKategori, Tahap } from '@/types'
+import { DEFAULT_ROUTE } from '@/constants/roles'
+import { DEFAULT_STAGES } from '@/constants/stages'
+import type { Category, CategoryRoute, Stage } from '@/types'
 
 /**
- * Aturan alur yang bisa diubah Super Admin saat aplikasi berjalan:
- * batas waktu tiap tahap dan rute kategori → sekret. Keduanya dipakai
- * di seluruh layar, jadi mengubah satu angka langsung terasa di papan
- * pemantauan dan penanda SLA di daftar berkas.
+ * Flow rules the super admin can change at runtime: the deadline for each stage
+ * and the category → secretary route. Both are read across every screen, so
+ * changing one number is felt immediately on the monitoring board and in the
+ * SLA markers on the document list.
  */
-export interface AlurState {
-  readonly tahapan: readonly Tahap[]
-  readonly rute: RuteKategori
+export interface FlowState {
+  readonly stages: readonly Stage[]
+  readonly route: CategoryRoute
 }
 
-export const alurAtom = atom<AlurState>({
-  tahapan: TAHAPAN_AWAL,
-  rute: RUTE_AWAL,
+export const flowAtom = atom<FlowState>({
+  stages: DEFAULT_STAGES,
+  route: DEFAULT_ROUTE,
 })
 
-/** Batas hari baru untuk satu tahap, dijepit ke 1..14. */
-export const ubahSla = (state: AlurState, indeks: number, hari: number): AlurState => ({
+/** New day limit for one stage, clamped to 1..14. */
+export const setStageSla = (state: FlowState, index: number, days: number): FlowState => ({
   ...state,
-  tahapan: state.tahapan.map((tahap, i) =>
-    i === indeks && tahap.sla !== null ? { ...tahap, sla: Math.min(14, Math.max(1, hari)) } : tahap,
+  stages: state.stages.map((stage, i) =>
+    i === index && stage.sla !== null ? { ...stage, sla: Math.min(14, Math.max(1, days)) } : stage,
   ),
 })
 
-/** Arahkan satu kategori ke sekret lain. Berlaku untuk pengajuan baru. */
-export const ubahRute = (state: AlurState, kategori: Kategori, sekretId: string): AlurState => ({
+/** Point one category at a different secretary. Applies to new submissions. */
+export const setCategoryRoute = (state: FlowState, category: Category, secretaryId: string): FlowState => ({
   ...state,
-  rute: { ...state.rute, [kategori]: sekretId },
+  route: { ...state.route, [category]: secretaryId },
 })

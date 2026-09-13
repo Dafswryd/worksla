@@ -1,30 +1,30 @@
-import type { TabKotak } from '../atoms'
+import type { InboxTab } from '../atoms'
 
 interface TabBarProps {
-  readonly aktif: TabKotak
-  readonly onPilih: (tab: TabKotak) => void
-  readonly jumlah: Readonly<Record<TabKotak, number>>
+  readonly active: InboxTab
+  readonly onPick: (tab: InboxTab) => void
+  readonly counts: Readonly<Record<InboxTab, number>>
 }
 
-const LABEL: ReadonlyArray<readonly [TabKotak, string]> = [
-  ['tindakan', 'Perlu tindakan saya'],
-  ['jalan', 'Sedang berjalan'],
-  ['balik', 'Dikembalikan'],
-  ['selesai', 'Selesai'],
+const LABELS: ReadonlyArray<readonly [InboxTab, string]> = [
+  ['action', 'Perlu tindakan saya'],
+  ['running', 'Sedang berjalan'],
+  ['returned', 'Dikembalikan'],
+  ['done', 'Selesai'],
 ]
 
-export function TabBar({ aktif, onPilih, jumlah }: TabBarProps) {
+export function TabBar({ active, onPick, counts }: TabBarProps) {
   return (
     <div className="tabs">
-      {LABEL.map(([key, label]) => (
+      {LABELS.map(([key, label]) => (
         <button
           type="button"
           key={key}
-          className={key === aktif ? 'tab is-active' : 'tab'}
-          onClick={() => onPilih(key)}
+          className={key === active ? 'tab is-active' : 'tab'}
+          onClick={() => onPick(key)}
         >
           {label}
-          {jumlah[key] > 0 ? <span className="nav-badge num">{jumlah[key]}</span> : null}
+          {counts[key] > 0 ? <span className="nav-badge num">{counts[key]}</span> : null}
         </button>
       ))}
     </div>

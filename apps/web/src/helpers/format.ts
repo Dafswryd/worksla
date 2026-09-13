@@ -1,33 +1,33 @@
-const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'] as const
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'] as const
 
-/** Dua huruf pertama dari nama depan dan belakang, untuk avatar. */
-export function inisial(nama: string): string {
-  return nama
+/** First letter of the first and last name, for avatars. */
+export function initialsOf(name: string): string {
+  return name
     .split(' ')
-    .map((kata) => kata.charAt(0))
+    .map((word) => word.charAt(0))
     .join('')
     .slice(0, 2)
     .toUpperCase()
 }
 
-/** Nama depan saja — untuk sapaan. */
-export const namaDepan = (nama: string): string => nama.split(' ')[0] ?? nama
+/** First name only — for greetings. */
+export const firstName = (name: string): string => name.split(' ')[0] ?? name
 
-/** Email institusi yang diturunkan dari nama, untuk mengisi form masuk. */
-export function emailDari(nama: string): string {
-  const bagian = nama.toLowerCase().split(' ')
-  const depan = bagian[0] ?? 'pengguna'
-  const belakang = bagian[1]?.charAt(0) ?? 'x'
-  return `${depan}.${belakang}@ui.ac.id`
+/** Institutional email derived from a name, to prefill the login form. */
+export function emailFor(name: string): string {
+  const parts = name.toLowerCase().split(' ')
+  const first = parts[0] ?? 'pengguna'
+  const last = parts[1]?.charAt(0) ?? 'x'
+  return `${first}.${last}@ui.ac.id`
 }
 
-/** Cap waktu ringkas bergaya riwayat: "12 Sep · 09.14". */
-export function waktuSekarang(): string {
-  const kini = new Date()
-  const jam = String(kini.getHours()).padStart(2, '0')
-  const menit = String(kini.getMinutes()).padStart(2, '0')
-  return `${kini.getDate()} ${BULAN[kini.getMonth()] ?? ''} · ${jam}.${menit}`
+/** Compact history-style timestamp: "12 Sep · 09.14". */
+export function nowStamp(): string {
+  const now = new Date()
+  const hour = String(now.getHours()).padStart(2, '0')
+  const minute = String(now.getMinutes()).padStart(2, '0')
+  return `${now.getDate()} ${MONTHS[now.getMonth()] ?? ''} · ${hour}.${minute}`
 }
 
-/** Persentase bulat yang aman dari pembagian nol. */
-export const persen = (bagian: number, total: number): number => (total === 0 ? 0 : Math.round((bagian / total) * 100))
+/** Rounded percentage that is safe against division by zero. */
+export const percent = (part: number, total: number): number => (total === 0 ? 0 : Math.round((part / total) * 100))

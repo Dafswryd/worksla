@@ -1,31 +1,34 @@
 import { useState } from 'react'
 import { useAtomValue } from 'jotai'
-import { tahapDari } from '@imeri/shared'
+import { stageAt } from '@imeri/shared'
 import { Icon } from '@/components/Icon'
-import { peranDari } from '@/constants/peran'
-import { alurAtom } from '@/stores/alurAtom'
-import type { Pengajuan } from '@/types'
+import { roleById } from '@/constants/roles'
+import { flowAtom } from '@/stores/flowAtom'
+import type { StageKey, Submission } from '@/types'
 
-interface TolakModalProps {
-  readonly pengajuan: Pengajuan
-  readonly onBatal: () => void
-  readonly onKirim: (komentar: string) => void
+interface RejectModalProps {
+  readonly submission: Submission
+  readonly onCancel: () => void
+  readonly onSubmit: (comment: string) => void
 }
 
-const CONTOH = ['Surat persetujuan atasan langsung belum dilampirkan', 'Tanggal di form berbeda dengan yang tertulis di surat'].join('\n')
+const SAMPLE = [
+  'Surat persetujuan atasan langsung belum dilampirkan',
+  'Tanggal di form berbeda dengan yang tertulis di surat',
+].join('\n')
 
-/** Nama orang yang akan menerima berkas setelah dikembalikan satu langkah. */
-function penerima(pengajuan: Pengajuan, tujuanKey: string, ruteSekret: string): string {
-  if (tujuanKey === 'pengaju') return pengajuan.pemohon
-  if (tujuanKey === 'sekret' || tujuanKey === 'rekam') return peranDari(ruteSekret).nama
-  if (tujuanKey === 'wadir') return peranDari('hendra').nama
-  return peranDari('ratna').nama
+/** Name of the person who receives the document after it is sent back one step. */
+function recipient(submission: Submission, targetKey: StageKey, secretaryId: string): string {
+  if (targetKey === 'submitter') return submission.requester
+  if (targetKey === 'secretary' || targetKey === 'recording') return roleById(secretaryId).name
+  if (targetKey === 'deputy') return roleById('hendra').name
+  return roleById('ratna').name
 }
 
-export function TolakModal({ pengajuan, onBatal, onKirim }: TolakModalProps) {
-  const { tahapan, rute } = useAtomValue(alurAtom)
-  const [komentar, setKomentar] = useState(CONTOH)
-  const tujuan = tahapDari(tahapan, pengajuan.tahap - 1)
+export function RejectModal({ submission, onCancel, onSubmit }: RejectModalProps) {
+  const { stages, route } = useAtomValue(flowAtom)
+  const [comment, setComment] = useState(SAMPLE)
+  const target = stageAt(stages, submission.stageIndex - 1)
 
   return (
     <div className="modal" role="dialog" aria-modal="true" aria-label="Kembalikan pengajuan">
@@ -34,20 +37,20 @@ export function TolakModal({ pengajuan, onBatal, onKirim }: TolakModalProps) {
           <span className="modal-ico danger">
             <Icon name="rotateBack" size={16} strokeWidth={2} />
           </span>
-          <span className="modal-title">Kembalikan ke {tujuan.meja}</span>
-          <button type="button" className="icon-btn" aria-label="Tutup" onClick={onBatal}>
+          <span className="modal-title">Kembalikan ke {target.desk}</span>
+          <button type="button" className="icon-btn" aria-label="Tutup" onClick={onCancel}>
             <Icon name="close" size={16} strokeWidth={2} />
           </button>
         </div>
 
         <div className="modal-body">
           <div className="field">
-            <label htmlFor="komentar">Alasan pengembalian</label>
+            <label htmlFor="comment">Alasan pengembalian</label>
             <textarea
-              id="komentar"
-              value={komentar}
+              id="comment"
+              value={comment}
               placeholder="Tulis satu alasan per baris…"
-              onChange={(event) => setKomentar(event.target.value)}
+              onChange={(event) => setComment(event.target.value)}
             />
             <p className="hint">
               Setiap baris menjadi satu poin checklist yang harus ditutup sebelum berkas boleh diteruskan lagi.
@@ -56,16 +59,16 @@ export function TolakModal({ pengajuan, onBatal, onKirim }: TolakModalProps) {
 
           <div className="route-note">
             <Icon name="arrowRight" size={15} strokeWidth={2} />
-            Berkas mundur satu langkah ke {penerima(pengajuan, tujuan.key, rute[pengajuan.kategori])} — bukan kembali ke
-            awal.
+            Berkas mundur satu langkah ke {recipient(submission, target.key, route[submission.category])} — bukan
+            kembali ke awal.
           </div>
         </div>
 
         <div className="modal-foot">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onBatal}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
             Batal
           </button>
-          <button type="button" className="btn btn-danger btn-sm" onClick={() => onKirim(komentar)}>
+          <button type="button" className="btn btn-danger btn-sm" onClick={() => onSubmit(comment)}>
             Kembalikan berkas
           </button>
         </div>

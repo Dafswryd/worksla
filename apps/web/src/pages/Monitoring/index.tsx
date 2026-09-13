@@ -1,102 +1,102 @@
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAtom, useAtomValue } from 'jotai'
-import { pemantau, terlihat } from '@imeri/shared'
+import { isObserver, isVisible } from '@imeri/shared'
 import { Chip } from '@/components/Chip'
 import { Icon } from '@/components/Icon'
 import { StatStrip } from '@/components/StatStrip'
-import { PengajuanDrawer } from '@/components/pengajuan/PengajuanDrawer'
-import { STAT_CLUSTER } from '@/constants/pegawai'
-import { bebanKerja, penumpukan, ringkasan } from '@/helpers/pemantauan'
-import { alurAtom } from '@/stores/alurAtom'
-import { pengajuanAtom } from '@/stores/pengajuanAtom'
-import { peranAktifAtom } from '@/stores/sesiAtom'
-import { berkasTerbukaAtom } from '@/stores/uiAtom'
-import { AntarCluster } from './components/AntarCluster'
-import { LingkupBar } from './components/LingkupBar'
-import { Penumpukan } from './components/Penumpukan'
-import { Pergerakan } from './components/Pergerakan'
-import { PerluDitagih } from './components/PerluDitagih'
-import { TabelBeban } from './components/TabelBeban'
+import { SubmissionDrawer } from '@/components/submission/SubmissionDrawer'
+import { CLUSTER_STATS } from '@/constants/staff'
+import { backlogByStage, summarize, workloadRows } from '@/helpers/monitoring'
+import { flowAtom } from '@/stores/flowAtom'
+import { submissionsAtom } from '@/stores/submissionAtom'
+import { activeRoleAtom } from '@/stores/sessionAtom'
+import { openCodeAtom } from '@/stores/uiAtom'
+import { Backlog } from './components/Backlog'
+import { ClusterCompare } from './components/ClusterCompare'
+import { Overdue } from './components/Overdue'
+import { ScopeBar } from './components/ScopeBar'
+import { Throughput } from './components/Throughput'
+import { WorkloadTable } from './components/WorkloadTable'
 
-/** Rata-rata hari selesai: satu cluster untuk monitor, rata-rata empat untuk admin. */
-function rataSelesai(cluster: string | undefined): number {
-  const semua = Object.values(STAT_CLUSTER)
-  if (cluster === undefined) return semua.reduce((jumlah, item) => jumlah + item.rata, 0) / semua.length
-  return STAT_CLUSTER[cluster as keyof typeof STAT_CLUSTER]?.rata ?? 0
+/** Average days to completion: one cluster for a monitor, the mean of four for an admin. */
+function averageCompletion(cluster: string | undefined): number {
+  const all = Object.values(CLUSTER_STATS)
+  if (cluster === undefined) return all.reduce((total, item) => total + item.avgDays, 0) / all.length
+  return CLUSTER_STATS[cluster as keyof typeof CLUSTER_STATS]?.avgDays ?? 0
 }
 
-export default function Pemantauan() {
-  const peran = useAtomValue(peranAktifAtom)
-  const daftar = useAtomValue(pengajuanAtom)
-  const { tahapan, rute } = useAtomValue(alurAtom)
-  const [terbuka, setTerbuka] = useAtom(berkasTerbukaAtom)
+export default function Monitoring() {
+  const role = useAtomValue(activeRoleAtom)
+  const list = useAtomValue(submissionsAtom)
+  const { stages, route } = useAtomValue(flowAtom)
+  const [openCode, setOpenCode] = useAtom(openCodeAtom)
   const navigate = useNavigate()
 
-  // Papan ini hanya untuk Super Admin dan Monitor Cluster.
-  if (!pemantau(peran)) return <Navigate to="/" replace />
+  // This board is for the super admin and cluster monitors only.
+  if (!isObserver(role)) return <Navigate to="/" replace />
 
-  const lingkup = daftar.filter((item) => terlihat(item, peran))
-  const m = ringkasan(lingkup, tahapan)
-  const rata = rataSelesai(peran.tipe === 'monitor' ? peran.cluster : undefined)
-  const dibuka = terbuka === null ? undefined : daftar.find((item) => item.kode === terbuka)
+  const scoped = list.filter((item) => isVisible(item, role))
+  const summary = summarize(scoped, stages)
+  const average = averageCompletion(role.type === 'monitor' ? role.cluster : undefined)
+  const opened = openCode === null ? undefined : list.find((item) => item.code === openCode)
 
   return (
     <div className="canvas">
       <div className="page-head">
         <div>
           <h1 className="page-title">
-            {peran.tipe === 'admin' ? 'Ringkasan seluruh instansi' : `Cluster ${peran.cluster}`}
+            {role.type === 'admin' ? 'Ringkasan seluruh instansi' : `Cluster ${role.cluster}`}
           </h1>
           <p className="page-sub">
-            {peran.tipe === 'admin'
+            {role.type === 'admin'
               ? 'Pergerakan berkas, penumpukan per meja, dan beban kerja di semua cluster.'
-              : `Pergerakan berkas dan beban kerja pegawai di Cluster ${peran.cluster}. Hanya berkas cluster ini yang terlihat.`}
+              : `Pergerakan berkas dan beban kerja pegawai di Cluster ${role.cluster}. Hanya berkas cluster ini yang terlihat.`}
           </p>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-ghost" onClick={() => navigate('/berkas')}>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/documents')}>
             <Icon name="file" size={16} strokeWidth={2} /> Lihat daftar berkas
           </button>
         </div>
       </div>
 
-      <LingkupBar peran={peran} jumlahBerkas={lingkup.length} />
+      <ScopeBar role={role} documentCount={scoped.length} />
 
       <StatStrip
         items={[
           {
             label: 'Berkas aktif',
-            ikon: 'file',
-            nilai: m.aktif.length,
-            keterangan: 'sedang berjalan di semua tahap',
+            icon: 'file',
+            value: summary.active.length,
+            caption: 'sedang berjalan di semua tahap',
           },
           {
             label: 'Lewat SLA',
-            ikon: 'clock',
-            nilai: (
+            icon: 'clock',
+            value: (
               <>
-                {m.telat.length}
-                {m.telat.length > 0 ? <Chip tone="amber">{m.rasioTelat}%</Chip> : null}
+                {summary.overdue.length}
+                {summary.overdue.length > 0 ? <Chip tone="amber">{summary.overdueRatio}%</Chip> : null}
               </>
             ),
-            keterangan: m.telat.length > 0 ? 'menunggu ditagih' : 'semua dalam batas',
+            caption: summary.overdue.length > 0 ? 'menunggu ditagih' : 'semua dalam batas',
           },
           {
             label: 'Tingkat pengembalian',
-            ikon: 'rotateBack',
-            nilai: `${m.rasioBalik}%`,
-            keterangan: `${m.dikembalikan.length} berkas dikembalikan ke meja sebelumnya`,
+            icon: 'rotateBack',
+            value: `${summary.returnRatio}%`,
+            caption: `${summary.returned.length} berkas dikembalikan ke meja sebelumnya`,
           },
           {
             label: 'Rata-rata selesai',
-            ikon: 'check',
-            nilai: (
+            icon: 'check',
+            value: (
               <>
-                {rata.toFixed(1)}
+                {average.toFixed(1)}
                 <Chip tone="slate">hari</Chip>
               </>
             ),
-            keterangan: 'dari kirim sampai arsip',
+            caption: 'dari kirim sampai arsip',
           },
         ]}
       />
@@ -106,11 +106,11 @@ export default function Pemantauan() {
           <div className="card">
             <div className="card-head">
               <span className="card-title">Berkas menumpuk di meja mana</span>
-              <Chip tone="slate" angka>
-                {m.aktif.length} aktif
+              <Chip tone="slate" numeric>
+                {summary.active.length} aktif
               </Chip>
             </div>
-            <Penumpukan baris={penumpukan(m.aktif, tahapan)} />
+            <Backlog rows={backlogByStage(summary.active, stages)} />
           </div>
         </div>
 
@@ -119,7 +119,7 @@ export default function Pemantauan() {
             <div className="card-head">
               <span className="card-title">Pergerakan 14 hari</span>
             </div>
-            <Pergerakan />
+            <Throughput />
           </div>
         </div>
 
@@ -127,11 +127,11 @@ export default function Pemantauan() {
           <div className="card">
             <div className="card-head">
               <span className="card-title">Beban kerja pegawai</span>
-              <button type="button" className="link-btn" onClick={() => navigate('/beban')}>
+              <button type="button" className="link-btn" onClick={() => navigate('/workload')}>
                 Lihat semua <Icon name="arrowRight" size={14} strokeWidth={2} />
               </button>
             </div>
-            <TabelBeban baris={bebanKerja(lingkup, tahapan, rute, peran)} penuh={false} />
+            <WorkloadTable rows={workloadRows(scoped, stages, route, role)} full={false} />
           </div>
         </div>
 
@@ -139,24 +139,24 @@ export default function Pemantauan() {
           <div className="card">
             <div className="card-head">
               <span className="card-title">Perlu ditagih</span>
-              {m.telat.length > 0 ? (
-                <Chip tone="amber" angka>
-                  {m.telat.length}
+              {summary.overdue.length > 0 ? (
+                <Chip tone="amber" numeric>
+                  {summary.overdue.length}
                 </Chip>
               ) : null}
             </div>
-            <PerluDitagih daftar={m.telat} onBuka={(kode) => setTerbuka(kode)} />
+            <Overdue list={summary.overdue} onOpen={(code) => setOpenCode(code)} />
           </div>
         </div>
 
-        {peran.tipe === 'admin' ? (
+        {role.type === 'admin' ? (
           <div className="m12">
-            <AntarCluster daftar={daftar} />
+            <ClusterCompare list={list} />
           </div>
         ) : null}
       </div>
 
-      {dibuka ? <PengajuanDrawer pengajuan={dibuka} onTutup={() => setTerbuka(null)} /> : null}
+      {opened ? <SubmissionDrawer submission={opened} onClose={() => setOpenCode(null)} /> : null}
     </div>
   )
 }

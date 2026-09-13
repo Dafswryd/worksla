@@ -1,22 +1,26 @@
-import { HARIAN } from '@/constants/pegawai'
+import { DAILY } from '@/constants/staff'
 
 /**
- * Berkas masuk vs selesai per hari, 14 hari terakhir. Kalau batang biru
- * terus lebih tinggi dari hijau, antrean sedang tumbuh.
+ * Documents in vs completed per day over the last 14 days. If the blue bars stay
+ * taller than the green ones, the queue is growing.
  */
-export function Pergerakan() {
-  const puncak = Math.max(1, ...HARIAN.map(([, masuk, keluar]) => Math.max(masuk, keluar)))
+export function Throughput() {
+  const peak = Math.max(1, ...DAILY.map(([, incoming, completed]) => Math.max(incoming, completed)))
 
   return (
     <>
       <div className="spark">
-        {HARIAN.map(([tanggal, masuk, keluar]) => (
-          <span className="spark-col" key={tanggal}>
+        {DAILY.map(([date, incoming, completed]) => (
+          <span className="spark-col" key={date}>
             <span className="spark-bars">
-              <i style={{ height: `${(masuk / puncak) * 100}%` }} title={`${tanggal}: ${masuk} masuk`} />
-              <i className="out" style={{ height: `${(keluar / puncak) * 100}%` }} title={`${tanggal}: ${keluar} selesai`} />
+              <i style={{ height: `${(incoming / peak) * 100}%` }} title={`${date}: ${incoming} masuk`} />
+              <i
+                className="out"
+                style={{ height: `${(completed / peak) * 100}%` }}
+                title={`${date}: ${completed} selesai`}
+              />
             </span>
-            <span className="spark-x">{tanggal}</span>
+            <span className="spark-x">{date}</span>
           </span>
         ))}
       </div>

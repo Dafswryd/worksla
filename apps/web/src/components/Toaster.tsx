@@ -4,13 +4,13 @@ import { toastsAtom } from '@/stores/toastAtom'
 import type { ToastTone } from '@/stores/toastAtom'
 import type { IconName } from '@/types'
 
-const IKON_TONE: Record<ToastTone, IconName> = {
+const TONE_ICON: Record<ToastTone, IconName> = {
   success: 'check',
   error: 'alert',
   info: 'inbox',
 }
 
-/** Tumpukan toast di kanan bawah; dipasang sekali di kerangka aplikasi. */
+/** Toast stack in the bottom right; mounted once in the app shell. */
 export function Toaster() {
   const toasts = useAtomValue(toastsAtom)
   if (toasts.length === 0) return null
@@ -20,7 +20,7 @@ export function Toaster() {
       {toasts.map((toast) => (
         <div className="toast" key={toast.id}>
           <span className="t-ico">
-            <Icon name={IKON_TONE[toast.tone]} size={16} strokeWidth={2} />
+            <Icon name={TONE_ICON[toast.tone]} size={16} strokeWidth={2} />
           </span>
           <span>{toast.message}</span>
         </div>

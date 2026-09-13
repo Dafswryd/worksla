@@ -14,7 +14,7 @@ export const toastsAtom = atom<readonly Toast[]>([])
 
 const TOAST_MS = 3600
 
-/** Dorong satu toast; hilang sendiri setelah beberapa detik. */
+/** Push one toast; it disappears on its own after a few seconds. */
 export const useToast = () => {
   const setToasts = useSetAtom(toastsAtom)
   return useCallback(

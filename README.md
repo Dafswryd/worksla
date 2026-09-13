@@ -1,24 +1,30 @@
-# IMERI — Sistem Pengajuan Dokumen
+# IMERI — Document Submission System
 
-Antarmuka pengajuan dokumen lintas cluster IMERI. Satu berkas berjalan dari
-pengaju di cluster → sekret sesuai kategorinya → Wadir (QC + paraf) →
-Direktur (tanda tangan) → kembali ke sekret untuk direkam → pengaju diberi tahu.
-Penolakan memundurkan berkas **satu langkah**, disertai komentar yang otomatis
-menjadi checklist revisi.
+Cross-cluster document submission interface for IMERI. One document travels from
+a submitter in a cluster → the secretary for its category → the Deputy Director
+(QC + initials) → the Director (signature) → back to the secretary to be
+recorded → the submitter is notified.
 
-## Struktur
+A rejection moves the document back **one step only**, along with comments that
+automatically become a revision checklist.
 
-Mengikuti struktur monorepo SprintIQ.
+The interface itself is written in Indonesian; the code, folder names, and
+documentation are in English.
+
+## Structure
+
+Follows the SprintIQ monorepo layout.
 
 ```
-apps/web            React + Vite + TypeScript (antarmuka)
-packages/shared     tipe domain & aturan alur yang dipakai bersama FE/BE
+apps/web            React + Vite + TypeScript (the interface)
+packages/shared     domain types & flow rules shared by FE/BE
 ```
 
-`apps/api` belum dibuat — seluruh data masih seed di `apps/web/src/constants`.
-Lapisan `apps/web/src/api` sudah disiapkan sebagai sambungan ke backend nanti.
+`apps/api` does not exist yet — all data is still seeded in
+`apps/web/src/constants`. The `apps/web/src/api` layer is already in place as
+the connection point for a future backend.
 
-## Menjalankan
+## Running
 
 ```bash
 npm install
@@ -27,22 +33,25 @@ npm run typecheck
 npm run build:web
 ```
 
-## Peran yang bisa dicoba
+## Roles you can try
 
-Halaman masuk memakai combobox akun; kata sandi tidak diperiksa.
+The login screen uses an account combobox; the password is not checked.
 
-| Peran | Contoh akun | Lingkup |
+| Role | Example account | Scope |
 |---|---|---|
-| Pengaju | Rina Kartika | pengajuan yang ia buat |
-| Sekret | Sari Dewi / Budi Santoso / Tuti Marlina | satu kategori saja |
-| Wadir | Hendra Wijaya | semua kategori, QC + paraf |
-| Direktur | Ratna Puspita | tanda tangan akhir |
-| Super Admin | Yoga Pratama | semua cluster + ubah aturan alur |
-| Monitor Cluster | Nadia Rahma / Ferry Gunawan | satu cluster, hanya membaca |
+| Submitter | Rina Kartika | submissions they created |
+| Secretary | Sari Dewi / Budi Santoso / Tuti Marlina | one category only |
+| Deputy Director | Hendra Wijaya | all categories, QC + initials |
+| Director | Ratna Puspita | final signature |
+| Super Admin | Yoga Pratama | all clusters + edit the flow rules |
+| Cluster Monitor | Nadia Rahma / Ferry Gunawan | one cluster, read-only |
 
-## Catatan desain
+## Design notes
 
-- Token warna, tipografi, dan kelas komponen diambil dari SprintIQ.
-  Hanya tiga token biru yang ditimpa warna merek IMERI (`:root` kedua di `globals.css`).
-- Batas waktu (SLA) per tahap dan rute kategori → sekret disimpan di
-  `stores/alurAtom.ts` dan bisa diubah Super Admin saat aplikasi berjalan.
+- Colour tokens, typography, and component classes come from SprintIQ. Only
+  three blue tokens are overridden with the IMERI brand colours (the second
+  `:root` block in `globals.css`).
+- Per-stage deadlines (SLA) and the category → secretary route live in
+  `stores/flowAtom.ts` and can be changed by the super admin at runtime.
+- Domain values are English keys (`finance`, `returned`, `deputy`); their
+  Indonesian screen labels live in `constants/labels.ts`.

@@ -1,18 +1,18 @@
 import { atom } from 'jotai'
-import type { Cluster, Kategori } from '@/types'
+import type { Cluster, Category } from '@/types'
 
-/** Kata kunci pencarian di topbar — dipakai daftar berkas di beberapa halaman. */
-export const cariAtom = atom('')
+/** Topbar search term — read by the document list on several pages. */
+export const searchAtom = atom('')
 
-export type SaringKategori = Kategori | 'semua'
-export type SaringCluster = Cluster | 'semua'
+export type CategoryFilter = Category | 'all'
+export type ClusterFilter = Cluster | 'all'
 
-export interface SaringState {
-  readonly kategori: SaringKategori
-  readonly cluster: SaringCluster
+export interface FilterState {
+  readonly category: CategoryFilter
+  readonly cluster: ClusterFilter
 }
 
-export const saringAtom = atom<SaringState>({ kategori: 'semua', cluster: 'semua' })
+export const filtersAtom = atom<FilterState>({ category: 'all', cluster: 'all' })
 
-/** Kode berkas yang panel detailnya sedang terbuka; null berarti tertutup. */
-export const berkasTerbukaAtom = atom<string | null>(null)
+/** Code of the document whose detail panel is open; null means closed. */
+export const openCodeAtom = atom<string | null>(null)

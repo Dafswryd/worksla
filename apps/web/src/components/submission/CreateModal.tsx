@@ -1,28 +1,29 @@
 import { useState } from 'react'
 import { useAtomValue } from 'jotai'
 import { Icon } from '@/components/Icon'
-import { SEMUA_KATEGORI, peranDari } from '@/constants/peran'
-import { alurAtom } from '@/stores/alurAtom'
-import type { Kategori } from '@/types'
+import { CATEGORY_LABEL } from '@/constants/labels'
+import { ALL_CATEGORIES, roleById } from '@/constants/roles'
+import { flowAtom } from '@/stores/flowAtom'
+import type { Category } from '@/types'
 
-interface BuatModalProps {
-  readonly onBatal: () => void
-  readonly onKirim: (judul: string, kategori: Kategori) => void
+interface CreateModalProps {
+  readonly onCancel: () => void
+  readonly onSubmit: (title: string, category: Category) => void
 }
 
-const LAMPIRAN_CONTOH = [
-  { nama: 'Foto kondisi ruang arsip.pdf', ukuran: '820 KB', tipe: 'pdf' as const },
-  { nama: 'Estimasi harga rak.xlsx', ukuran: '44 KB', tipe: 'xls' as const },
+const SAMPLE_ATTACHMENTS = [
+  { name: 'Foto kondisi ruang arsip.pdf', size: '820 KB', type: 'pdf' as const },
+  { name: 'Estimasi harga rak.xlsx', size: '44 KB', type: 'xls' as const },
 ]
 
-export function BuatModal({ onBatal, onKirim }: BuatModalProps) {
-  const { rute } = useAtomValue(alurAtom)
-  const [judul, setJudul] = useState('Pengadaan rak arsip ruang dokumen riset')
-  const [kategori, setKategori] = useState<Kategori>('Keuangan')
-  const [uraian, setUraian] = useState(
+export function CreateModal({ onCancel, onSubmit }: CreateModalProps) {
+  const { route } = useAtomValue(flowAtom)
+  const [title, setTitle] = useState('Pengadaan rak arsip ruang dokumen riset')
+  const [category, setCategory] = useState<Category>('finance')
+  const [summary, setSummary] = useState(
     'Rak arsip di ruang dokumen riset sudah penuh sehingga berkas tahun berjalan menumpuk di meja.',
   )
-  const sekret = peranDari(rute[kategori])
+  const secretary = roleById(route[category])
 
   return (
     <div className="modal" role="dialog" aria-modal="true" aria-label="Buat pengajuan">
@@ -32,49 +33,53 @@ export function BuatModal({ onBatal, onKirim }: BuatModalProps) {
             <Icon name="plus" size={16} strokeWidth={2} />
           </span>
           <span className="modal-title">Buat pengajuan baru</span>
-          <button type="button" className="icon-btn" aria-label="Tutup" onClick={onBatal}>
+          <button type="button" className="icon-btn" aria-label="Tutup" onClick={onCancel}>
             <Icon name="close" size={16} strokeWidth={2} />
           </button>
         </div>
 
         <div className="modal-body">
           <div className="field">
-            <label htmlFor="nJudul">Judul pengajuan</label>
-            <input id="nJudul" value={judul} onChange={(event) => setJudul(event.target.value)} />
+            <label htmlFor="nTitle">Judul pengajuan</label>
+            <input id="nTitle" value={title} onChange={(event) => setTitle(event.target.value)} />
           </div>
 
           <div className="field">
-            <label htmlFor="nKat">Kategori</label>
-            <select id="nKat" value={kategori} onChange={(event) => setKategori(event.target.value as Kategori)}>
-              {SEMUA_KATEGORI.map((pilihan) => (
-                <option value={pilihan} key={pilihan}>
-                  {pilihan}
+            <label htmlFor="nCategory">Kategori</label>
+            <select
+              id="nCategory"
+              value={category}
+              onChange={(event) => setCategory(event.target.value as Category)}
+            >
+              {ALL_CATEGORIES.map((option) => (
+                <option value={option} key={option}>
+                  {CATEGORY_LABEL[option]}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="field">
-            <label htmlFor="nUraian">Uraian singkat</label>
+            <label htmlFor="nSummary">Uraian singkat</label>
             <textarea
-              id="nUraian"
+              id="nSummary"
               style={{ minHeight: 70 }}
-              value={uraian}
-              onChange={(event) => setUraian(event.target.value)}
+              value={summary}
+              onChange={(event) => setSummary(event.target.value)}
             />
           </div>
 
           <div className="field">
-            <label htmlFor="nLampiran">Lampiran</label>
-            <div className="att" id="nLampiran">
-              {LAMPIRAN_CONTOH.map((berkas) => (
-                <div className="att-row" key={berkas.nama}>
-                  <span className={`att-ico ${berkas.tipe}`}>
+            <label htmlFor="nAttachments">Lampiran</label>
+            <div className="att" id="nAttachments">
+              {SAMPLE_ATTACHMENTS.map((file) => (
+                <div className="att-row" key={file.name}>
+                  <span className={`att-ico ${file.type}`}>
                     <Icon name="file" size={15} />
                   </span>
                   <span className="att-meta">
-                    <span className="att-name">{berkas.nama}</span>
-                    <span className="att-sub num">{berkas.ukuran} · baru diunggah</span>
+                    <span className="att-name">{file.name}</span>
+                    <span className="att-sub num">{file.size} · baru diunggah</span>
                   </span>
                 </div>
               ))}
@@ -84,15 +89,15 @@ export function BuatModal({ onBatal, onKirim }: BuatModalProps) {
 
           <div className="route-note">
             <Icon name="arrowRight" size={15} strokeWidth={2} />
-            Akan masuk ke {sekret.nama} — {sekret.jab}
+            Akan masuk ke {secretary.name} — {secretary.position}
           </div>
         </div>
 
         <div className="modal-foot">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onBatal}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
             Batal
           </button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => onKirim(judul, kategori)}>
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => onSubmit(title, category)}>
             Kirim pengajuan
           </button>
         </div>

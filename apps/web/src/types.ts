@@ -1,22 +1,23 @@
 import type { JSX } from 'react'
 
 export type {
-  Kategori,
+  Category,
   Cluster,
-  TahapKey,
-  StatusPengajuan,
-  PeranTipe,
-  JejakJenis,
-  Tahap,
-  Lampiran,
+  StageKey,
+  SubmissionStatus,
+  RoleType,
+  TrailKind,
+  StaffScope,
+  Stage,
+  Attachment,
   ChecklistItem,
-  JejakItem,
-  Pengajuan,
-  Peran,
-  RuteKategori,
-  Pegawai,
-  StatCluster,
-  TitikHarian,
+  TrailEntry,
+  Submission,
+  Role,
+  CategoryRoute,
+  Staff,
+  ClusterStat,
+  DailyPoint,
 } from '@imeri/shared'
 
 export type IconName =

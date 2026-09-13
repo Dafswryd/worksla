@@ -2,25 +2,26 @@ import { Navigate } from 'react-router-dom'
 import { useAtom, useAtomValue } from 'jotai'
 import { Chip } from '@/components/Chip'
 import { Icon } from '@/components/Icon'
-import { PERAN, SEMUA_KATEGORI, peranDari } from '@/constants/peran'
-import { alurAtom, ubahRute, ubahSla } from '@/stores/alurAtom'
-import { peranAktifAtom } from '@/stores/sesiAtom'
+import { CATEGORY_LABEL } from '@/constants/labels'
+import { ALL_CATEGORIES, ROLES, roleById } from '@/constants/roles'
+import { flowAtom, setCategoryRoute, setStageSla } from '@/stores/flowAtom'
+import { activeRoleAtom } from '@/stores/sessionAtom'
 import { useToast } from '@/stores/toastAtom'
-import type { Kategori } from '@/types'
+import type { Category } from '@/types'
 
 /**
- * Satu-satunya layar yang mengubah aturan, dan hanya Super Admin yang
- * membukanya. Mengubah satu angka di sini langsung mengubah penanda SLA di
- * seluruh daftar berkas dan angka di papan pemantauan.
+ * The only screen that changes the rules, and only the super admin opens it.
+ * Changing one number here changes the SLA markers across every document list
+ * and the figures on the monitoring board.
  */
-export default function AturanAlur() {
-  const peran = useAtomValue(peranAktifAtom)
-  const [alur, setAlur] = useAtom(alurAtom)
+export default function FlowRules() {
+  const role = useAtomValue(activeRoleAtom)
+  const [flow, setFlow] = useAtom(flowAtom)
   const toast = useToast()
 
-  if (peran.tipe !== 'admin') return <Navigate to="/" replace />
+  if (role.type !== 'admin') return <Navigate to="/" replace />
 
-  const sekretTersedia = Object.values(PERAN).filter((kandidat) => kandidat.tipe === 'sekret')
+  const secretaries = Object.values(ROLES).filter((candidate) => candidate.type === 'secretary')
 
   return (
     <div className="canvas">
@@ -44,25 +45,25 @@ export default function AturanAlur() {
             </p>
 
             <div style={{ marginTop: 14 }}>
-              {alur.tahapan.map((tahap, indeks) =>
-                tahap.sla === null ? null : (
-                  <div className="rule-row" key={`${tahap.key}-${indeks}`}>
+              {flow.stages.map((stage, index) =>
+                stage.sla === null ? null : (
+                  <div className="rule-row" key={`${stage.key}-${index}`}>
                     <span className="rule-name">
-                      {tahap.meja} — {tahap.aksi}
-                      <small>Tahap {indeks} dari {alur.tahapan.length - 1}</small>
+                      {stage.desk} — {stage.action}
+                      <small>Tahap {index} dari {flow.stages.length - 1}</small>
                     </span>
                     <input
                       type="number"
                       min={1}
                       max={14}
-                      value={tahap.sla}
-                      aria-label={`Batas hari ${tahap.aksi}`}
+                      value={stage.sla}
+                      aria-label={`Batas hari ${stage.action}`}
                       onChange={(event) => {
-                        const hari = Number(event.target.value)
-                        if (Number.isNaN(hari)) return
-                        setAlur((prev) => ubahSla(prev, indeks, hari))
+                        const days = Number(event.target.value)
+                        if (Number.isNaN(days)) return
+                        setFlow((prev) => setStageSla(prev, index, days))
                       }}
-                      onBlur={() => toast(`Batas ${tahap.meja} — ${tahap.aksi} disimpan`)}
+                      onBlur={() => toast(`Batas ${stage.desk} — ${stage.action} disimpan`)}
                     />
                   </div>
                 ),
@@ -84,22 +85,24 @@ export default function AturanAlur() {
             <p className="card-desc">Kategori pengajuan menentukan sekret mana yang menerimanya.</p>
 
             <div style={{ marginTop: 14 }}>
-              {SEMUA_KATEGORI.map((kategori: Kategori) => (
-                <div className="rule-row" style={{ gridTemplateColumns: 'minmax(0,1fr) 132px' }} key={kategori}>
-                  <span className="rule-name">{kategori}</span>
+              {ALL_CATEGORIES.map((category: Category) => (
+                <div className="rule-row" style={{ gridTemplateColumns: 'minmax(0,1fr) 132px' }} key={category}>
+                  <span className="rule-name">{CATEGORY_LABEL[category]}</span>
                   <select
                     className="task-select"
-                    aria-label={`Sekret untuk ${kategori}`}
-                    value={alur.rute[kategori]}
+                    aria-label={`Sekret untuk ${CATEGORY_LABEL[category]}`}
+                    value={flow.route[category]}
                     onChange={(event) => {
-                      const sekretId = event.target.value
-                      setAlur((prev) => ubahRute(prev, kategori, sekretId))
-                      toast(`Kategori ${kategori} sekarang dirutekan ke ${peranDari(sekretId).nama}`)
+                      const secretaryId = event.target.value
+                      setFlow((prev) => setCategoryRoute(prev, category, secretaryId))
+                      toast(
+                        `Kategori ${CATEGORY_LABEL[category]} sekarang dirutekan ke ${roleById(secretaryId).name}`,
+                      )
                     }}
                   >
-                    {sekretTersedia.map((sekret) => (
-                      <option value={sekret.id} key={sekret.id}>
-                        {sekret.nama}
+                    {secretaries.map((secretary) => (
+                      <option value={secretary.id} key={secretary.id}>
+                        {secretary.name}
                       </option>
                     ))}
                   </select>

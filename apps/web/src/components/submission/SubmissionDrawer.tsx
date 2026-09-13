@@ -1,67 +1,78 @@
 import { useEffect, useState } from 'react'
 import { useAtomValue } from 'jotai'
-import { bolehDiteruskan, checklistBeres, lewatSla, memegang, tahapDari } from '@imeri/shared'
+import { canAdvance, checklistCleared, isHolder, isOverdue, stageAt } from '@imeri/shared'
 import { Chip, StatusChip } from '@/components/Chip'
 import { Icon } from '@/components/Icon'
-import { peranDari } from '@/constants/peran'
-import { LABEL_MAJU, LABEL_TOLAK } from '@/constants/tahapan'
-import { pemegang } from '@/helpers/pemantauan'
-import { alurAtom } from '@/stores/alurAtom'
-import { useAlurAksi } from '@/stores/pengajuanAtom'
-import { peranAktifAtom } from '@/stores/sesiAtom'
+import { CATEGORY_LABEL } from '@/constants/labels'
+import { roleById } from '@/constants/roles'
+import { ADVANCE_LABEL, RETURN_LABEL } from '@/constants/stages'
+import { holderOf } from '@/helpers/monitoring'
+import { flowAtom } from '@/stores/flowAtom'
+import { useFlowActions } from '@/stores/submissionAtom'
+import { activeRoleAtom } from '@/stores/sessionAtom'
 import { useToast } from '@/stores/toastAtom'
-import { TolakModal } from './TolakModal'
-import type { Pengajuan, Tahap } from '@/types'
+import { RejectModal } from './RejectModal'
+import type { Stage, Submission } from '@/types'
 
-interface PengajuanDrawerProps {
-  readonly pengajuan: Pengajuan
-  readonly onTutup: () => void
+interface SubmissionDrawerProps {
+  readonly submission: Submission
+  readonly onClose: () => void
 }
 
-/** Garis waktu posisi berkas — satu baris per tahap. */
-function PosisiBerkas({ pengajuan, tahapan }: { readonly pengajuan: Pengajuan; readonly tahapan: readonly Tahap[] }) {
-  const telat = lewatSla(pengajuan, tahapan)
+/** Timeline of where the document stands — one row per stage. */
+function StageTimeline({
+  submission,
+  stages,
+}: {
+  readonly submission: Submission
+  readonly stages: readonly Stage[]
+}) {
+  const overdue = isOverdue(submission, stages)
 
   return (
     <ul className="vtl">
-      {tahapan.map((tahap, indeks) => {
-        const lewat = pengajuan.status === 'selesai' || indeks < pengajuan.tahap
-        const kini = indeks === pengajuan.tahap && pengajuan.status !== 'selesai'
-        const kelas = lewat
+      {stages.map((stage, index) => {
+        const passed = submission.status === 'done' || index < submission.stageIndex
+        const current = index === submission.stageIndex && submission.status !== 'done'
+        const className = passed
           ? 'done'
-          : kini
-            ? pengajuan.status === 'dikembalikan'
+          : current
+            ? submission.status === 'returned'
               ? 'back'
-              : telat
+              : overdue
                 ? 'late'
                 : 'now'
             : ''
 
-        const keterangan = lewat
+        const note = passed
           ? 'selesai'
-          : kini
-            ? pengajuan.status === 'dikembalikan'
+          : current
+            ? submission.status === 'returned'
               ? 'dikembalikan ke sini — menunggu perbaikan'
-              : tahap.sla === null
+              : stage.sla === null
                 ? 'menunggu pengaju'
-                : `hari ke-${pengajuan.hari} dari batas ${tahap.sla} hari${telat ? ' — lewat batas' : ''}`
+                : `hari ke-${submission.daysInStage} dari batas ${stage.sla} hari${overdue ? ' — lewat batas' : ''}`
             : 'belum mulai'
 
         return (
-          <li className={kelas} key={`${tahap.key}-${indeks}`}>
+          <li className={className} key={`${stage.key}-${index}`}>
             <span className="vtl-dot">
-              {lewat ? (
+              {passed ? (
                 <Icon name="check" size={12} strokeWidth={2.4} />
-              ) : kini ? (
-                <Icon name={pengajuan.status === 'dikembalikan' ? 'rotateBack' : 'clock'} size={12} strokeWidth={2.2} />
+              ) : current ? (
+                <Icon
+                  name={submission.status === 'returned' ? 'rotateBack' : 'clock'}
+                  size={12}
+                  strokeWidth={2.2}
+                />
               ) : (
                 <span style={{ width: 6, height: 6, borderRadius: 99, background: 'currentColor' }} />
               )}
             </span>
             <span className="vtl-body">
-              <span className="vtl-who">{tahap.meja}</span>
-              <span className="vtl-what">{tahap.aksi}</span>
-              <span className="vtl-when">{keterangan}</span>
+              <span className="vtl-who">{stage.desk}</span>
+              <span className="vtl-what">{stage.action}</span>
+              <span className="vtl-when">{note}</span>
             </span>
           </li>
         )
@@ -70,45 +81,45 @@ function PosisiBerkas({ pengajuan, tahapan }: { readonly pengajuan: Pengajuan; r
   )
 }
 
-export function PengajuanDrawer({ pengajuan, onTutup }: PengajuanDrawerProps) {
-  const { tahapan, rute } = useAtomValue(alurAtom)
-  const peran = useAtomValue(peranAktifAtom)
-  const { majukan, kembalikan, toggleChecklist } = useAlurAksi()
+export function SubmissionDrawer({ submission, onClose }: SubmissionDrawerProps) {
+  const { stages, route } = useAtomValue(flowAtom)
+  const role = useAtomValue(activeRoleAtom)
+  const { advance, sendBack, toggleChecklist } = useFlowActions()
   const toast = useToast()
-  const [tolakTerbuka, setTolakTerbuka] = useState(false)
+  const [rejectOpen, setRejectOpen] = useState(false)
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !tolakTerbuka) onTutup()
+      if (event.key === 'Escape' && !rejectOpen) onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onTutup, tolakTerbuka])
+  }, [onClose, rejectOpen])
 
-  const pegang = memegang(pengajuan, peran, tahapan)
-  const siapa = pemegang(pengajuan, tahapan, rute)
-  const tahap = tahapDari(tahapan, pengajuan.tahap)
-  const labelMaju = LABEL_MAJU[tahap.key]
-  const labelTolak = LABEL_TOLAK[tahap.key]
-  const terkunci = !bolehDiteruskan(pengajuan)
+  const holding = isHolder(submission, role, stages)
+  const holder = holderOf(submission, stages, route)
+  const stage = stageAt(stages, submission.stageIndex)
+  const advanceLabel = ADVANCE_LABEL[stage.key]
+  const returnLabel = RETURN_LABEL[stage.key]
+  const locked = !canAdvance(submission)
 
   return (
     <>
-      <div className="task-backdrop" role="presentation" onClick={onTutup} />
-      <aside className="task-drawer" role="dialog" aria-label={`Detail ${pengajuan.kode}`}>
+      <div className="task-backdrop" role="presentation" onClick={onClose} />
+      <aside className="task-drawer" role="dialog" aria-label={`Detail ${submission.code}`}>
         <div className="task-drawer-head">
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div className="p-kode num" style={{ marginBottom: 4 }}>
-              {pengajuan.kode}
+            <div className="p-code num" style={{ marginBottom: 4 }}>
+              {submission.code}
             </div>
-            <div className="task-drawer-title">{pengajuan.judul}</div>
+            <div className="task-drawer-title">{submission.title}</div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 9 }}>
-              <StatusChip pengajuan={pengajuan} tahapan={tahapan} />
-              <Chip tone="purple">{pengajuan.kategori}</Chip>
-              <Chip>Cluster {pengajuan.cluster}</Chip>
+              <StatusChip submission={submission} stages={stages} />
+              <Chip tone="purple">{CATEGORY_LABEL[submission.category]}</Chip>
+              <Chip>Cluster {submission.cluster}</Chip>
             </div>
           </div>
-          <button type="button" className="icon-btn" aria-label="Tutup" onClick={onTutup}>
+          <button type="button" className="icon-btn" aria-label="Tutup" onClick={onClose}>
             <Icon name="close" size={16} strokeWidth={2} />
           </button>
         </div>
@@ -127,13 +138,13 @@ export function PengajuanDrawer({ pengajuan, onTutup }: PengajuanDrawerProps) {
             }}
           >
             <span className="avatar" style={{ width: 30, height: 30, fontSize: 'var(--fs-xs)' }}>
-              {siapa.ini}
+              {holder.initials}
             </span>
             <div style={{ minWidth: 0 }}>
-              <div className="user-name">{siapa.nama}</div>
-              <div className="user-plan">{siapa.jab}</div>
+              <div className="user-name">{holder.name}</div>
+              <div className="user-plan">{holder.position}</div>
             </div>
-            {pegang ? (
+            {holding ? (
               <span style={{ marginLeft: 'auto' }}>
                 <Chip tone="blue">Anda</Chip>
               </span>
@@ -143,28 +154,28 @@ export function PengajuanDrawer({ pengajuan, onTutup }: PengajuanDrawerProps) {
           <p className="task-drawer-label">Ringkasan</p>
           <dl className="kv">
             <dt>Pemohon</dt>
-            <dd>{pengajuan.pemohon}</dd>
+            <dd>{submission.requester}</dd>
             <dt>Dibuat</dt>
-            <dd className="num">{pengajuan.dibuat}</dd>
+            <dd className="num">{submission.createdAt}</dd>
             <dt>Kategori</dt>
-            <dd>{pengajuan.kategori}</dd>
+            <dd>{CATEGORY_LABEL[submission.category]}</dd>
             <dt>Sekret tujuan</dt>
-            <dd>{peranDari(rute[pengajuan.kategori]).nama}</dd>
+            <dd>{roleById(route[submission.category]).name}</dd>
           </dl>
 
           <p className="task-drawer-label">Posisi berkas</p>
-          <PosisiBerkas pengajuan={pengajuan} tahapan={tahapan} />
+          <StageTimeline submission={submission} stages={stages} />
 
-          <p className="task-drawer-label">Lampiran ({pengajuan.lampiran.length})</p>
+          <p className="task-drawer-label">Lampiran ({submission.attachments.length})</p>
           <div className="att">
-            {pengajuan.lampiran.map((berkas) => (
-              <div className="att-row" key={berkas.nama}>
-                <span className={`att-ico ${berkas.tipe}`}>
+            {submission.attachments.map((file) => (
+              <div className="att-row" key={file.name}>
+                <span className={`att-ico ${file.type}`}>
                   <Icon name="file" size={15} />
                 </span>
                 <span className="att-meta">
-                  <span className="att-name">{berkas.nama}</span>
-                  <span className="att-sub num">{berkas.ukuran} · v1</span>
+                  <span className="att-name">{file.name}</span>
+                  <span className="att-sub num">{file.size} · v1</span>
                 </span>
                 <button
                   type="button"
@@ -177,95 +188,95 @@ export function PengajuanDrawer({ pengajuan, onTutup }: PengajuanDrawerProps) {
             ))}
           </div>
 
-          {pengajuan.checklist.length > 0 ? (
+          {submission.checklist.length > 0 ? (
             <>
               <p className="task-drawer-label">Checklist revisi</p>
               <ul className="ck">
-                {pengajuan.checklist.map((poin, indeks) => (
-                  <li className={poin.done ? 'done' : undefined} key={poin.teks}>
+                {submission.checklist.map((point, index) => (
+                  <li className={point.done ? 'done' : undefined} key={point.text}>
                     <button
                       type="button"
-                      disabled={!pegang}
-                      style={pegang ? undefined : { cursor: 'default' }}
-                      onClick={() => toggleChecklist(pengajuan.kode, indeks)}
+                      disabled={!holding}
+                      style={holding ? undefined : { cursor: 'default' }}
+                      onClick={() => toggleChecklist(submission.code, index)}
                     >
                       <span className="ck-box">
                         <Icon name="check" size={11} strokeWidth={3} />
                       </span>
-                      <span>{poin.teks}</span>
+                      <span>{point.text}</span>
                     </button>
                   </li>
                 ))}
               </ul>
               <p className="ck-gate">
                 <Icon name="alert" size={13} strokeWidth={2} />
-                {checklistBeres(pengajuan)
+                {checklistCleared(submission)
                   ? 'Semua poin tertutup — berkas boleh diajukan ulang.'
-                  : `${pengajuan.checklist.filter((poin) => !poin.done).length} poin belum tertutup. Berkas belum bisa diteruskan.`}
+                  : `${submission.checklist.filter((point) => !point.done).length} poin belum tertutup. Berkas belum bisa diteruskan.`}
               </p>
             </>
           ) : null}
 
           <p className="task-drawer-label">Riwayat</p>
           <div className="hist">
-            {[...pengajuan.riwayat].reverse().map((jejak, indeks) => (
-              <div className="hist-row" key={`${jejak.waktu}-${indeks}`}>
-                <span className={`hist-ico ${jejak.jenis}`}>
+            {[...submission.history].reverse().map((entry, index) => (
+              <div className="hist-row" key={`${entry.time}-${index}`}>
+                <span className={`hist-ico ${entry.kind}`}>
                   <Icon
-                    name={jejak.jenis === 'no' ? 'rotateBack' : jejak.jenis === 'up' ? 'clip' : 'check'}
+                    name={entry.kind === 'return' ? 'rotateBack' : entry.kind === 'submit' ? 'clip' : 'check'}
                     size={14}
                     strokeWidth={2}
                   />
                 </span>
                 <span className="hist-body">
                   <span className="hist-text">
-                    <b>{jejak.aktor}</b> ({jejak.peran}) {jejak.aksi}
+                    <b>{entry.actor}</b> ({entry.role}) {entry.action}
                   </span>
-                  <span className="hist-time num">{jejak.waktu}</span>
-                  {jejak.komentar ? <p className="hist-quote">{jejak.komentar}</p> : null}
+                  <span className="hist-time num">{entry.time}</span>
+                  {entry.comment ? <p className="hist-quote">{entry.comment}</p> : null}
                 </span>
               </div>
             ))}
           </div>
         </div>
 
-        {pengajuan.status === 'selesai' ? (
+        {submission.status === 'done' ? (
           <div className="drawer-note">
             <Icon name="check" size={15} strokeWidth={2} />
             Sudah disetujui dan diarsipkan. Berkas final bisa diunduh dari daftar lampiran.
           </div>
-        ) : !pegang ? (
+        ) : !holding ? (
           <div className="drawer-note">
             <Icon name="clock" size={15} strokeWidth={2} />
-            Berkas ada di {siapa.nama}. Anda bisa memantau, belum bisa mengambil tindakan.
+            Berkas ada di {holder.name}. Anda bisa memantau, belum bisa mengambil tindakan.
           </div>
         ) : (
           <div className="drawer-foot">
-            {labelTolak ? (
-              <button type="button" className="btn btn-danger" onClick={() => setTolakTerbuka(true)}>
-                <Icon name="rotateBack" size={16} strokeWidth={2} /> {labelTolak}
+            {returnLabel ? (
+              <button type="button" className="btn btn-danger" onClick={() => setRejectOpen(true)}>
+                <Icon name="rotateBack" size={16} strokeWidth={2} /> {returnLabel}
               </button>
             ) : null}
             <button
               type="button"
               className="btn btn-primary"
-              disabled={terkunci}
-              title={terkunci ? 'Tutup dulu semua poin checklist' : undefined}
-              onClick={() => majukan(pengajuan.kode)}
+              disabled={locked}
+              title={locked ? 'Tutup dulu semua poin checklist' : undefined}
+              onClick={() => advance(submission.code)}
             >
-              <Icon name="arrowRight" size={16} strokeWidth={2} /> {labelMaju ?? 'Teruskan'}
+              <Icon name="arrowRight" size={16} strokeWidth={2} /> {advanceLabel ?? 'Teruskan'}
             </button>
           </div>
         )}
       </aside>
 
-      {tolakTerbuka ? (
-        <TolakModal
-          pengajuan={pengajuan}
-          onBatal={() => setTolakTerbuka(false)}
-          onKirim={(komentar) => {
-            kembalikan(pengajuan.kode, komentar)
-            setTolakTerbuka(false)
+      {rejectOpen ? (
+        <RejectModal
+          submission={submission}
+          onCancel={() => setRejectOpen(false)}
+          onSubmit={(comment) => {
+            sendBack(submission.code, comment)
+            setRejectOpen(false)
           }}
         />
       ) : null}

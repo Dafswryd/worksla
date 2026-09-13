@@ -1,40 +1,40 @@
-import type { Tahap } from '@/types'
+import type { Stage, StageKey } from '@/types'
 
 /**
- * Enam tahap yang dilewati satu berkas. Angka `sla` adalah nilai awal —
- * Super Admin bisa mengubahnya saat aplikasi berjalan lewat `alurAtom`.
+ * The six stages a document passes through. The `sla` numbers are starting
+ * values — the super admin can change them at runtime through `flowAtom`.
  */
-export const TAHAPAN_AWAL: readonly Tahap[] = [
-  { key: 'pengaju', meja: 'Pengaju', aksi: 'Penyusunan berkas', sla: null },
-  { key: 'sekret', meja: 'Sekret', aksi: 'Verifikasi berkas', sla: 1 },
-  { key: 'wadir', meja: 'Wadir', aksi: 'QC & paraf', sla: 2 },
-  { key: 'direktur', meja: 'Direktur', aksi: 'Persetujuan', sla: 2 },
-  { key: 'rekam', meja: 'Sekret', aksi: 'Rekam & arsip', sla: 1 },
-  { key: 'selesai', meja: 'Pengaju', aksi: 'Selesai', sla: null },
+export const DEFAULT_STAGES: readonly Stage[] = [
+  { key: 'submitter', desk: 'Pengaju', action: 'Penyusunan berkas', sla: null },
+  { key: 'secretary', desk: 'Sekret', action: 'Verifikasi berkas', sla: 1 },
+  { key: 'deputy', desk: 'Wadir', action: 'QC & paraf', sla: 2 },
+  { key: 'director', desk: 'Direktur', action: 'Persetujuan', sla: 2 },
+  { key: 'recording', desk: 'Sekret', action: 'Rekam & arsip', sla: 1 },
+  { key: 'done', desk: 'Pengaju', action: 'Selesai', sla: null },
 ]
 
-/** Label tombol "maju" per tahap. */
-export const LABEL_MAJU: Readonly<Record<string, string>> = {
-  pengaju: 'Ajukan ulang',
-  sekret: 'Teruskan ke Wadir',
-  wadir: 'Paraf & teruskan ke Direktur',
-  direktur: 'Setujui & tanda tangani',
-  rekam: 'Rekam & beri tahu pengaju',
+/** "Move forward" button label per stage. */
+export const ADVANCE_LABEL: Partial<Record<StageKey, string>> = {
+  submitter: 'Ajukan ulang',
+  secretary: 'Teruskan ke Wadir',
+  deputy: 'Paraf & teruskan ke Direktur',
+  director: 'Setujui & tanda tangani',
+  recording: 'Rekam & beri tahu pengaju',
 }
 
-/** Label tombol "kembalikan" per tahap; tahap pengaju tidak punya. */
-export const LABEL_TOLAK: Readonly<Record<string, string>> = {
-  sekret: 'Kembalikan ke pengaju',
-  wadir: 'Kembalikan ke Sekret',
-  direktur: 'Kembalikan ke Wadir',
-  rekam: 'Kembalikan ke Direktur',
+/** "Send back" button label per stage; the submitter stage has none. */
+export const RETURN_LABEL: Partial<Record<StageKey, string>> = {
+  secretary: 'Kembalikan ke pengaju',
+  deputy: 'Kembalikan ke Sekret',
+  director: 'Kembalikan ke Wadir',
+  recording: 'Kembalikan ke Direktur',
 }
 
-/** Kalimat riwayat saat berkas diteruskan dari tahap tertentu. */
-export const JEJAK_MAJU: Readonly<Record<string, string>> = {
-  pengaju: 'mengajukan ulang setelah perbaikan',
-  sekret: 'meneruskan ke Wadir',
-  wadir: 'memberi paraf dan meneruskan ke Direktur',
-  direktur: 'menyetujui dan menandatangani',
-  rekam: 'merekam hasil dan memberi tahu pengaju',
+/** History sentence recorded when a document moves on from a given stage. */
+export const ADVANCE_TRAIL: Partial<Record<StageKey, string>> = {
+  submitter: 'mengajukan ulang setelah perbaikan',
+  secretary: 'meneruskan ke Wadir',
+  deputy: 'memberi paraf dan meneruskan ke Direktur',
+  director: 'menyetujui dan menandatangani',
+  recording: 'merekam hasil dan memberi tahu pengaju',
 }

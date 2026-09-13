@@ -1,9 +1,9 @@
 import type { GlyphMap, IconProps } from '@/types'
 
 /**
- * Satu sumber ikon. Semua glyph digambar di kanvas 24x24 bergaya stroke,
- * jadi bobotnya konsisten dengan skala tipografi; pemanggil cukup mengatur
- * `size` dan `strokeWidth`.
+ * Single icon source. Every glyph is drawn on a 24x24 stroke-style canvas so its
+ * weight stays consistent with the type scale; callers only set `size` and
+ * `strokeWidth`.
  */
 const PATHS: GlyphMap = {
   inbox: (

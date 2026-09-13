@@ -1,20 +1,20 @@
-import { peranDari } from '@/constants/peran'
-import { http, modeApi } from './http'
-import type { Peran } from '@/types'
+import { roleById } from '@/constants/roles'
+import { http, isApiMode } from './http'
+import type { Role } from '@/types'
 
 /**
- * Autentikasi. Di prototipe, `masuk()` hanya mengembalikan peran yang dipilih
- * di halaman masuk — kata sandi tidak diperiksa dan tidak ada token.
+ * Authentication. In the prototype `signIn()` just returns the role picked on
+ * the login screen — the password is not checked and there is no token.
  */
 export const authApi = {
-  masuk: async (peranId: string, sandi: string): Promise<Peran> => {
-    if (!modeApi()) return peranDari(peranId)
-    return http.post<Peran>('/auth/masuk', { peranId, sandi })
+  signIn: async (roleId: string, password: string): Promise<Role> => {
+    if (!isApiMode()) return roleById(roleId)
+    return http.post<Role>('/auth/sign-in', { roleId, password })
   },
 
-  saya: async (peranId: string): Promise<Peran> => {
-    if (!modeApi()) return peranDari(peranId)
-    return http.get<Peran>('/auth/saya')
+  me: async (roleId: string): Promise<Role> => {
+    if (!isApiMode()) return roleById(roleId)
+    return http.get<Role>('/auth/me')
   },
 }
 

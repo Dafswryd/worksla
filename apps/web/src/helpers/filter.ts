@@ -1,21 +1,21 @@
-import { terlihat } from '@imeri/shared'
-import type { Pengajuan, Peran } from '@/types'
-import type { SaringState } from '@/stores/uiAtom'
+import { isVisible } from '@imeri/shared'
+import type { Role, Submission } from '@/types'
+import type { FilterState } from '@/stores/uiAtom'
 
-/** Berkas dalam lingkup peran, lalu disaring kategori, cluster, dan kata kunci. */
-export function saringDaftar(
-  daftar: readonly Pengajuan[],
-  peran: Peran,
-  saring: SaringState,
-  cari: string,
-): readonly Pengajuan[] {
-  const kunci = cari.trim().toLowerCase()
+/** Documents within the role's scope, then narrowed by category, cluster, and search term. */
+export function filterSubmissions(
+  list: readonly Submission[],
+  role: Role,
+  filters: FilterState,
+  search: string,
+): readonly Submission[] {
+  const term = search.trim().toLowerCase()
 
-  return daftar.filter((item) => {
-    if (!terlihat(item, peran)) return false
-    if (saring.kategori !== 'semua' && item.kategori !== saring.kategori) return false
-    if (saring.cluster !== 'semua' && item.cluster !== saring.cluster) return false
-    if (kunci === '') return true
-    return `${item.judul} ${item.kode} ${item.pemohon}`.toLowerCase().includes(kunci)
+  return list.filter((item) => {
+    if (!isVisible(item, role)) return false
+    if (filters.category !== 'all' && item.category !== filters.category) return false
+    if (filters.cluster !== 'all' && item.cluster !== filters.cluster) return false
+    if (term === '') return true
+    return `${item.title} ${item.code} ${item.requester}`.toLowerCase().includes(term)
   })
 }

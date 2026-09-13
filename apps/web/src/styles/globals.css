@@ -1,9 +1,9 @@
 /* =========================================================================
-   IMERI — SISTEM PENGAJUAN DOKUMEN
-   Design token, tipografi, dan kelas komponen diambil dari SprintIQ
-   (apps/web/src/styles/globals.css). Blok :root kedua menimpa tiga token
-   biru dengan warna merek IMERI; sisanya tidak diubah.
-   Bagian bertanda "BARU" adalah tambahan khusus modul pengajuan.
+   IMERI — DOCUMENT SUBMISSION SYSTEM
+   Design tokens, typography, and component classes are taken from SprintIQ
+   (apps/web/src/styles/globals.css). The second :root block overrides three
+   blue tokens with the IMERI brand colours; nothing else is changed.
+   Sections marked "NEW" are additions specific to the submission module.
    ========================================================================= */
 :root{
   --fs-micro:0.625rem; --fs-xs:0.6875rem; --fs-sm:0.75rem; --fs-base:0.8125rem;
@@ -24,8 +24,8 @@
   --sh-md:0 6px 18px -4px rgba(16,24,40,.12), 0 2px 6px -2px rgba(16,24,40,.06);
   --sh-lg:0 18px 40px -12px rgba(16,24,40,.22), 0 6px 14px -6px rgba(16,24,40,.10);
 }
-/* ---- BARU: warna merek IMERI menggantikan biru bawaan SprintIQ.
-   Hanya tiga token yang ditimpa; sisa sistemnya tidak berubah. ---- */
+/* ---- NEW: IMERI brand colours replace the SprintIQ blues.
+   Only three tokens are overridden; the rest of the system is untouched. ---- */
 :root{
   --imeri-blue:#2F7FB0;
   --imeri-sky:#5FC2E0;
@@ -96,7 +96,7 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
 .canvas::-webkit-scrollbar{width:9px}
 .canvas::-webkit-scrollbar-thumb{background:#d7dade;border-radius:var(--r-pill);border:3px solid var(--surface)}
 
-/* BARU — pemilih peran di topbar, supaya prototipe bisa dicoba dari semua meja */
+/* NEW — topbar role switcher, so the prototype can be tried from every desk */
 .role-pick{display:flex;align-items:center;gap:7px}
 .role-pick label{font-size:var(--fs-xs);font-weight:var(--fw-semi);letter-spacing:var(--tr-label);
   text-transform:uppercase;color:var(--ink-400);white-space:nowrap}
@@ -170,7 +170,7 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
 .filter-reset{font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--ink-500);padding:7px 4px}
 .filter-reset:hover{color:var(--blue-600)}
 
-/* =========================== BARU: TABEL PENGAJUAN ====================== */
+/* =========================== NEW: SUBMISSION TABLE ===================== */
 .ptable-head,.ptable-row{display:grid;grid-template-columns:minmax(0,1fr) 148px 168px 104px 124px;
   gap:14px;align-items:center;padding:12px 18px;width:100%;text-align:left}
 .ptable-head{padding:14px 18px 10px;border-bottom:1px solid var(--line);font-size:var(--fs-micro);
@@ -181,14 +181,14 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
 .ptable-row.is-open{background:var(--blue-050)}
 .p-main{display:flex;align-items:center;gap:11px;min-width:0}
 .p-dot{width:9px;height:9px;border-radius:var(--r-pill);flex:none;background:var(--ink-300)}
-.p-dot.jalan{background:var(--blue-600)}
-.p-dot.balik{background:var(--red-500)}
-.p-dot.selesai{background:var(--green-500)}
-.p-dot.lewat{background:var(--amber-400)}
+.p-dot.running{background:var(--blue-600)}
+.p-dot.returned{background:var(--red-500)}
+.p-dot.done{background:var(--green-500)}
+.p-dot.overdue{background:var(--amber-400)}
 .p-text{min-width:0}
 .p-title{display:block;font-size:var(--fs-base);font-weight:var(--fw-semi);letter-spacing:var(--tr-tight);
   color:var(--ink-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.p-kode{display:block;font-size:var(--fs-xs);color:var(--ink-500);margin-top:3px}
+.p-code{display:block;font-size:var(--fs-xs);color:var(--ink-500);margin-top:3px}
 .p-cell{font-size:var(--fs-sm);color:var(--ink-700);min-width:0}
 .p-cell small{display:block;font-size:var(--fs-xs);color:var(--ink-400);margin-top:2px}
 .p-pos{display:flex;align-items:center;gap:8px;min-width:0}
@@ -196,7 +196,7 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
   display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:var(--fw-semi);color:var(--ink-700)}
 .p-empty{padding:34px 18px;text-align:center;font-size:var(--fs-base);color:var(--ink-500)}
 
-/* =========================== BARU: DRAWER DETAIL ======================= */
+/* =========================== NEW: DETAIL DRAWER ======================== */
 .task-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.25);z-index:39}
 .task-drawer{position:fixed;top:0;right:0;bottom:0;width:430px;max-width:94vw;background:var(--surface);
   border-left:1px solid var(--line);box-shadow:var(--sh-lg);z-index:40;display:flex;flex-direction:column}
@@ -212,12 +212,12 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
 .drawer-note{flex:none;border-top:1px solid var(--line);padding:13px 18px;font-size:var(--fs-sm);color:var(--ink-500);
   display:flex;align-items:center;gap:9px;background:var(--surface-2)}
 
-/* ringkasan k/v */
+/* key/value summary */
 .kv{display:grid;grid-template-columns:104px minmax(0,1fr);gap:7px 12px}
 .kv dt{font-size:var(--fs-sm);color:var(--ink-500);margin:0}
 .kv dd{font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--ink-900);margin:0;min-width:0}
 
-/* timeline posisi berkas */
+/* document position timeline */
 .vtl{list-style:none;margin:0;padding:0}
 .vtl li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:11px;position:relative;padding-bottom:14px}
 .vtl li:last-child{padding-bottom:0}
@@ -239,7 +239,7 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
 .vtl li.late .vtl-when{color:#96620d;font-weight:var(--fw-semi)}
 .vtl li.back .vtl-when{color:var(--red-500);font-weight:var(--fw-semi)}
 
-/* lampiran */
+/* attachments */
 .att{display:flex;flex-direction:column;gap:1px;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
 .att-row{display:flex;align-items:center;gap:11px;padding:10px 12px;background:var(--surface);border-top:1px solid var(--line)}
 .att-row:first-child{border-top:none}
@@ -254,7 +254,7 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
   font-size:var(--fs-xs);font-weight:var(--fw-medium);color:var(--ink-700);flex:none}
 .row-btn:hover{color:var(--blue-700);border-color:var(--blue-600);background:var(--blue-050)}
 
-/* checklist revisi */
+/* revision checklist */
 .ck{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
 .ck li button{display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;padding:8px 10px;
   border-radius:var(--r-md);font-size:var(--fs-sm);color:var(--ink-800);line-height:var(--lh-snug)}
@@ -265,15 +265,15 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
 .ck li.done button{color:var(--ink-400);text-decoration:line-through}
 .ck-gate{margin-top:9px;font-size:var(--fs-xs);color:var(--ink-500);display:flex;align-items:center;gap:6px}
 
-/* riwayat */
+/* history */
 .hist{display:flex;flex-direction:column}
 .hist-row{display:flex;gap:11px;padding:12px 0;border-top:1px solid var(--line)}
 .hist-row:first-child{border-top:none;padding-top:2px}
 .hist-ico{width:27px;height:27px;border-radius:var(--r-md);flex:none;display:flex;align-items:center;justify-content:center;
   background:var(--surface-3);color:var(--ink-500);border:1px solid var(--line)}
-.hist-ico.ok{background:var(--green-050);color:var(--green-600);border-color:#bfe8cd}
-.hist-ico.no{background:#fdecef;color:var(--red-500);border-color:#f6c7d0}
-.hist-ico.up{background:var(--blue-050);color:var(--blue-700);border-color:#bcdcee}
+.hist-ico.approve{background:var(--green-050);color:var(--green-600);border-color:#bfe8cd}
+.hist-ico.return{background:#fdecef;color:var(--red-500);border-color:#f6c7d0}
+.hist-ico.submit{background:var(--blue-050);color:var(--blue-700);border-color:#bcdcee}
 .hist-body{min-width:0;flex:1}
 .hist-text{font-size:var(--fs-base);color:var(--ink-500);line-height:var(--lh-snug)}
 .hist-text b{font-weight:var(--fw-semi);color:var(--ink-900)}
@@ -313,7 +313,7 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
 @keyframes toast-in{from{opacity:0;transform:translateY(6px)}}
 .toast .t-ico{color:var(--green-500)}
 
-/* ========================= BARU: HALAMAN MASUK ========================== */
+/* ========================= NEW: LOGIN SCREEN =========================== */
 .login{min-height:100vh;display:grid;grid-template-columns:1.1fr .9fr}
 .login-brand{position:relative;overflow:hidden;background:var(--surface);border-right:1px solid var(--line);
   display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:44px 52px}
@@ -344,8 +344,8 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
 .login-link{font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--blue-600)}
 .login-link:hover{color:var(--blue-700);text-decoration:underline}
 .btn-block{width:100%;justify-content:center}
-/* pemilih akun — combobox sendiri, karena <option> bawaan tidak bisa
-   menampung avatar, jabatan, dan penanda terpilih */
+/* account picker — a hand-rolled combobox, because a native <option> cannot
+   carry an avatar, a job title, and a selected marker */
 .sel-wrap{position:relative}
 .sel-trigger{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:7px 11px;
   border:1px solid var(--line-strong);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--sh-xs)}
@@ -372,7 +372,7 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
 .sel-opt.is-on .acc-av{background:var(--blue-600);color:#fff}
 .acc-meta{min-width:0;flex:1}
 .acc-name{display:block;font-size:var(--fs-sm);font-weight:var(--fw-semi);color:var(--ink-900);letter-spacing:var(--tr-tight)}
-.acc-jab{display:block;font-size:var(--fs-xs);color:var(--ink-500);margin-top:1px}
+.acc-position{display:block;font-size:var(--fs-xs);color:var(--ink-500);margin-top:1px}
 .acc-tick{color:var(--blue-600);flex:none}
 .proto-tag{display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border-radius:var(--r-sm);
   background:#fdf6e3;border:1px solid #f0dfae;color:#96620d;
@@ -386,11 +386,11 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
   .login-form{padding:28px 20px 44px}
 }
 
-/* logo di sidebar */
+/* sidebar logo */
 .brand-logo-img{height:29px;width:auto;display:block}
 .brand-mark-img{height:26px;width:auto;display:none}
 
-/* ================= BARU: PEMANTAUAN (super admin & cluster) ============= */
+/* ================= NEW: MONITORING (super admin & cluster) ============== */
 .mgrid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:18px;align-items:start;margin-bottom:18px}
 .m8{grid-column:span 8;min-width:0}
 .m4{grid-column:span 4;min-width:0}
@@ -401,7 +401,7 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
   border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface-2)}
 .scope-bar .stat-label{margin:0}
 
-/* penumpukan per meja */
+/* backlog per desk */
 .bn-list{padding:8px 18px 16px}
 .bn-row{display:grid;grid-template-columns:142px minmax(0,1fr) 96px;gap:12px;align-items:center;
   padding:10px 0;border-top:1px solid var(--line)}
@@ -415,7 +415,7 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
 .bn-val{text-align:right;font-size:var(--fs-md);font-weight:var(--fw-semi);color:var(--ink-900);letter-spacing:var(--tr-tight)}
 .bn-val small{display:block;font-size:var(--fs-xs);font-weight:var(--fw-regular);color:var(--ink-400);margin-top:2px}
 
-/* pergerakan harian */
+/* daily throughput */
 .spark{display:flex;align-items:flex-end;gap:5px;height:148px;padding:16px 18px 0}
 .spark-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;height:100%;min-width:0}
 .spark-bars{display:flex;align-items:flex-end;gap:2px;height:100%;width:100%;justify-content:center}
@@ -426,15 +426,15 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
 .spark-legend span{display:flex;align-items:center;gap:7px;font-size:var(--fs-sm);color:var(--ink-500)}
 .dot{width:10px;height:10px;border-radius:3px;flex:none}
 
-/* beban kerja */
+/* workload */
 .wtable-head,.wtable-row{display:grid;grid-template-columns:minmax(0,1fr) 152px 76px 84px 136px 92px;
   gap:14px;align-items:center;padding:11px 18px}
 .wtable-head{padding:14px 18px 10px;border-bottom:1px solid var(--line);font-size:var(--fs-micro);
   font-weight:var(--fw-semi);letter-spacing:var(--tr-label);text-transform:uppercase;color:var(--ink-500)}
 .wtable-row + .wtable-row{border-top:1px solid var(--line)}
-/* varian ringkas — muat di kolom 8/12 tanpa nama pegawai terpotong */
+/* compact variant — fits an 8/12 column without clipping staff names */
 .wt-slim{grid-template-columns:minmax(0,1fr) 74px 86px 116px}
-.wt-slim .w-peran,.wt-slim .w-rata{display:none}
+.wt-slim .w-role,.wt-slim .w-avg{display:none}
 .w-who{display:flex;align-items:center;gap:10px;min-width:0}
 .w-name{font-size:var(--fs-base);font-weight:var(--fw-semi);letter-spacing:var(--tr-tight);color:var(--ink-900)}
 .w-cell{font-size:var(--fs-sm);color:var(--ink-700)}
@@ -447,7 +447,7 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
 .w-load .stat-bar i{display:block;height:100%;border-radius:var(--r-pill);background:var(--blue-600)}
 .w-load .stat-bar i.hot{background:var(--amber-400)}
 
-/* aturan alur */
+/* flow rules */
 .rule-row{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:14px;align-items:center;
   padding:12px 18px;border-top:1px solid var(--line)}
 .rule-row:first-of-type{border-top:none}
@@ -461,13 +461,13 @@ input,textarea,select{font:inherit;letter-spacing:inherit}
 
 @media (max-width:900px){
   .wtable-head,.wtable-row{grid-template-columns:minmax(0,1fr) 76px 84px}
-  .wtable-head span:nth-child(2),.wtable-row .w-peran,
+  .wtable-head span:nth-child(2),.wtable-row .w-role,
   .wtable-head span:nth-child(5),.wtable-row .w-load,
-  .wtable-head span:nth-child(6),.wtable-row .w-rata{display:none}
+  .wtable-head span:nth-child(6),.wtable-row .w-avg{display:none}
   .bn-row{grid-template-columns:120px minmax(0,1fr) 84px}
 }
 
-/* ------------------- BARU: adaptasi layar sempit ------------------ */
+/* ------------------- NEW: narrow-screen adaptation ----------------- */
 @media (max-width:1080px){
   .ptable-head,.ptable-row{grid-template-columns:minmax(0,1fr) 150px 104px}
   .ptable-head span:nth-child(2),.ptable-row .col-kat{display:none}

@@ -1,54 +1,68 @@
-import type { Kategori, Peran, RuteKategori } from '@/types'
+import type { Category, CategoryRoute, Role } from '@/types'
 
-/** Akun yang tersedia di prototipe — enam meja operasional, tiga pemantau. */
-export const PERAN: Readonly<Record<string, Peran>> = {
-  rina: { id: 'rina', nama: 'Rina Kartika', tipe: 'pengaju', jab: 'Pengaju · Cluster HCRC', ini: 'RK' },
-  sari: { id: 'sari', nama: 'Sari Dewi', tipe: 'sekret', kategori: 'Keuangan', jab: 'Sekret Keuangan', ini: 'SD' },
+/** Accounts available in the prototype — six operational desks, three observers. */
+export const ROLES: Readonly<Record<string, Role>> = {
+  rina: { id: 'rina', name: 'Rina Kartika', type: 'submitter', position: 'Pengaju · Cluster HCRC', initials: 'RK' },
+  sari: {
+    id: 'sari',
+    name: 'Sari Dewi',
+    type: 'secretary',
+    category: 'finance',
+    position: 'Sekret Keuangan',
+    initials: 'SD',
+  },
   budi: {
     id: 'budi',
-    nama: 'Budi Santoso',
-    tipe: 'sekret',
-    kategori: 'Kepegawaian',
-    jab: 'Sekret Kepegawaian',
-    ini: 'BS',
+    name: 'Budi Santoso',
+    type: 'secretary',
+    category: 'personnel',
+    position: 'Sekret Kepegawaian',
+    initials: 'BS',
   },
-  tuti: { id: 'tuti', nama: 'Tuti Marlina', tipe: 'sekret', kategori: 'Umum', jab: 'Sekret Umum', ini: 'TM' },
-  hendra: { id: 'hendra', nama: 'Hendra Wijaya', tipe: 'wadir', jab: 'Wakil Direktur', ini: 'HW' },
-  ratna: { id: 'ratna', nama: 'Ratna Puspita', tipe: 'direktur', jab: 'Direktur', ini: 'RP' },
-  yoga: { id: 'yoga', nama: 'Yoga Pratama', tipe: 'admin', jab: 'Super Admin', ini: 'YP' },
+  tuti: {
+    id: 'tuti',
+    name: 'Tuti Marlina',
+    type: 'secretary',
+    category: 'general',
+    position: 'Sekret Umum',
+    initials: 'TM',
+  },
+  hendra: { id: 'hendra', name: 'Hendra Wijaya', type: 'deputy', position: 'Wakil Direktur', initials: 'HW' },
+  ratna: { id: 'ratna', name: 'Ratna Puspita', type: 'director', position: 'Direktur', initials: 'RP' },
+  yoga: { id: 'yoga', name: 'Yoga Pratama', type: 'admin', position: 'Super Admin', initials: 'YP' },
   nadia: {
     id: 'nadia',
-    nama: 'Nadia Rahma',
-    tipe: 'monitor',
+    name: 'Nadia Rahma',
+    type: 'monitor',
     cluster: 'HCRC',
-    jab: 'Monitor Cluster HCRC',
-    ini: 'NR',
+    position: 'Monitor Cluster HCRC',
+    initials: 'NR',
   },
   ferry: {
     id: 'ferry',
-    nama: 'Ferry Gunawan',
-    tipe: 'monitor',
+    name: 'Ferry Gunawan',
+    type: 'monitor',
     cluster: 'MedTech',
-    jab: 'Monitor Cluster MedTech',
-    ini: 'FG',
+    position: 'Monitor Cluster MedTech',
+    initials: 'FG',
   },
 }
 
-export const AKUN_OPERASIONAL: readonly string[] = ['rina', 'sari', 'budi', 'tuti', 'hendra', 'ratna']
-export const AKUN_PEMANTAUAN: readonly string[] = ['yoga', 'nadia', 'ferry']
+export const OPERATIONAL_ACCOUNTS: readonly string[] = ['rina', 'sari', 'budi', 'tuti', 'hendra', 'ratna']
+export const OBSERVER_ACCOUNTS: readonly string[] = ['yoga', 'nadia', 'ferry']
 
-/** Ambil peran berdasarkan id; jatuh ke Sekret Keuangan bila tidak dikenal. */
-export function peranDari(id: string): Peran {
-  const peran = PERAN[id] ?? PERAN['sari']
-  if (!peran) throw new Error('Daftar peran kosong')
-  return peran
+/** Look up a role by id; falls back to the finance secretary when unknown. */
+export function roleById(id: string): Role {
+  const role = ROLES[id] ?? ROLES['sari']
+  if (!role) throw new Error('Role list is empty')
+  return role
 }
 
-/** Rute awal kategori → sekret. Bisa diubah Super Admin. */
-export const RUTE_AWAL: RuteKategori = {
-  Keuangan: 'sari',
-  Kepegawaian: 'budi',
-  Umum: 'tuti',
+/** Initial category → secretary route. The super admin can change it. */
+export const DEFAULT_ROUTE: CategoryRoute = {
+  finance: 'sari',
+  personnel: 'budi',
+  general: 'tuti',
 }
 
-export const SEMUA_KATEGORI: readonly Kategori[] = ['Keuangan', 'Kepegawaian', 'Umum']
+export const ALL_CATEGORIES: readonly Category[] = ['finance', 'personnel', 'general']

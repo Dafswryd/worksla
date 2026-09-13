@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
-import { lewatSla } from '@imeri/shared'
-import type { Pengajuan, Tahap } from '@/types'
+import { isOverdue } from '@imeri/shared'
+import type { Stage, Submission } from '@/types'
 
-export type ChipTone = 'netral' | 'red' | 'amber' | 'green' | 'blue' | 'slate' | 'purple'
+export type ChipTone = 'neutral' | 'red' | 'amber' | 'green' | 'blue' | 'slate' | 'purple'
 
-const KELAS: Record<ChipTone, string> = {
-  netral: 'chip',
+const CLASS: Record<ChipTone, string> = {
+  neutral: 'chip',
   red: 'chip t-red',
   amber: 'chip t-amber',
   green: 'chip t-green',
@@ -16,18 +16,24 @@ const KELAS: Record<ChipTone, string> = {
 
 interface ChipProps {
   readonly tone?: ChipTone
-  readonly angka?: boolean
+  readonly numeric?: boolean
   readonly children: ReactNode
 }
 
-export function Chip({ tone = 'netral', angka = false, children }: ChipProps) {
-  return <span className={angka ? `${KELAS[tone]} num` : KELAS[tone]}>{children}</span>
+export function Chip({ tone = 'neutral', numeric = false, children }: ChipProps) {
+  return <span className={numeric ? `${CLASS[tone]} num` : CLASS[tone]}>{children}</span>
 }
 
-/** Chip status berkas — satu tempat supaya warnanya konsisten di semua tabel. */
-export function StatusChip({ pengajuan, tahapan }: { readonly pengajuan: Pengajuan; readonly tahapan: readonly Tahap[] }) {
-  if (pengajuan.status === 'selesai') return <Chip tone="green">Selesai</Chip>
-  if (pengajuan.status === 'dikembalikan') return <Chip tone="red">Dikembalikan</Chip>
-  if (lewatSla(pengajuan, tahapan)) return <Chip tone="amber">Lewat SLA</Chip>
+/** Document status chip — kept in one place so the colours stay consistent across tables. */
+export function StatusChip({
+  submission,
+  stages,
+}: {
+  readonly submission: Submission
+  readonly stages: readonly Stage[]
+}) {
+  if (submission.status === 'done') return <Chip tone="green">Selesai</Chip>
+  if (submission.status === 'returned') return <Chip tone="red">Dikembalikan</Chip>
+  if (isOverdue(submission, stages)) return <Chip tone="amber">Lewat SLA</Chip>
   return <Chip tone="blue">Berjalan</Chip>
 }
