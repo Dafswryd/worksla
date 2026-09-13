@@ -17,18 +17,20 @@ Follows the SprintIQ monorepo layout.
 
 ```
 apps/web            React + Vite + TypeScript (the interface)
+apps/api            Express + Prisma + PostgreSQL + MinIO (the backend)
 packages/shared     domain types & flow rules shared by FE/BE
 ```
 
-`apps/api` does not exist yet — all data is still seeded in
-`apps/web/src/constants`. The `apps/web/src/api` layer is already in place as
-the connection point for a future backend.
+`apps/web` is not yet wired to `apps/api` — the interface still reads its data
+from `apps/web/src/constants`. Connecting the two is a separate phase; see
+`apps/api/README.md` for how to run the backend on its own in the meantime.
 
 ## Running
 
 ```bash
 npm install
-npm run dev:web        # http://localhost:5173
+npm run dev             # api + web together (see apps/api/README.md for setup)
+npm run dev:web         # http://localhost:5173
 npm run typecheck
 npm run build:web
 ```

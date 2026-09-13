@@ -8,7 +8,7 @@
     "packages/shared"
   ],
   "scripts": {
-    "dev": "npm run dev -w @imeri/api & npm run dev -w @imeri/web",
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm:dev:api\" \"npm:dev:web\"",
     "dev:web": "npm run dev -w @imeri/web",
     "dev:api": "npm run dev -w @imeri/api",
     "build:web": "npm run build -w @imeri/web",
@@ -19,6 +19,7 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "concurrently": "^9.2.4",
     "vitest": "^2.1.9"
   }
 }
