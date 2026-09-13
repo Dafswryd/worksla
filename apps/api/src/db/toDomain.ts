@@ -14,6 +14,7 @@ export function daysSince(from: Date, now: Date = new Date()): number {
   return Math.max(1, Math.floor((now.getTime() - from.getTime()) / MS_PER_DAY) + 1)
 }
 
+/** No ordering is assumed on `history` or `checklist` — callers may return them in any order. */
 export type SubmissionRow = DbSubmission & {
   requester: Pick<DbUser, 'name'>
   documents: DbDocument[]
@@ -43,11 +44,18 @@ const toChecklistItem = (item: DbChecklistItem): ChecklistItem => ({ text: item.
  * so "what did the secretary ask for back then?" stays answerable. The *active*
  * checklist is only the newest return's items, and only while the document is
  * still in the returned state.
+ *
+ * The "newest" return is picked by comparing `createdAt` directly, not by
+ * relying on `row.history` arriving pre-sorted — the input order (whatever a
+ * future query builder produces) never affects the result.
  */
 function activeChecklist(row: SubmissionRow): readonly DbChecklistItem[] {
   if (row.status !== 'returned') return []
-  const lastReturn = [...row.history].reverse().find((entry) => entry.kind === 'return')
-  if (!lastReturn) return []
+  const returns = row.history.filter((entry) => entry.kind === 'return')
+  if (returns.length === 0) return []
+  const lastReturn = returns.reduce((latest, entry) =>
+    entry.createdAt.getTime() > latest.createdAt.getTime() ? entry : latest,
+  )
   return row.checklist.filter((item) => item.historyEntryId === lastReturn.id)
 }
 
