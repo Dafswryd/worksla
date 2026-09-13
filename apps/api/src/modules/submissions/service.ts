@@ -42,6 +42,12 @@ function isCodeCollision(error: unknown): boolean {
   )
 }
 
+/**
+ * `prisma/seed.ts` seeds `CodeCounter` above every code it hardcodes, so this only
+ * ever needs to cover a genuine concurrent race (two requests allocating at the
+ * same instant), not a pre-existing, permanently-taken number — 10 is generous
+ * headroom for that case.
+ */
 const MAX_CODE_ATTEMPTS = 10
 
 /**

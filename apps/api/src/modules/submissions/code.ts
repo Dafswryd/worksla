@@ -8,7 +8,9 @@ const PREFIX: Readonly<Record<Category, string>> = {
 }
 
 /**
- * Sequential code per prefix per month, allocated inside the caller's transaction.
+ * Sequential code per prefix per month, allocated as its own transaction (the caller
+ * runs this via `prisma.$transaction((tx) => nextCode(tx, ...))`, separately from the
+ * submission write that follows — see `createSubmission` in `./service.ts` for why).
  * Replaces the prototype's `40 + list.length`, which broke past 60 rows and hardcoded the month.
  */
 export async function nextCode(tx: Prisma.TransactionClient, category: Category, now: Date = new Date()): Promise<string> {

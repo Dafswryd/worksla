@@ -113,7 +113,24 @@ describe('POST /submissions', () => {
       ),
     )
 
+    for (const res of results) expect(res.status).toBe(201)
+
     const codes = results.map((r) => r.body.code)
     expect(new Set(codes).size).toBe(5)
+  })
+
+  it('penghitung kode dimulai di atas nomor yang sudah dipakai data seed', async () => {
+    const existing = await prisma.submission.findMany({ where: { code: { startsWith: 'PJU-2609-' } } })
+    const highestSeeded = Math.max(...existing.map((row) => Number.parseInt(row.code.split('-')[2] ?? '0', 10)))
+
+    const agent = await loginAs(app, 'rina.k@ui.ac.id', PW)
+    const primary = await uploadedDocument(agent, 'primary')
+    const res = await agent
+      .post('/submissions')
+      .send({ title: 'Perbaikan atap gudang arsip', category: 'general', primaryDocumentId: primary, supportingDocumentIds: [] })
+
+    expect(res.status).toBe(201)
+    const newNumber = Number.parseInt(res.body.code.split('-')[2] as string, 10)
+    expect(newNumber).toBeGreaterThan(highestSeeded)
   })
 })

@@ -412,7 +412,46 @@ export async function seed(): Promise<void> {
     await createSubmission(submission, ids, names)
   }
 
+  await seedCodeCounters()
+
   console.log(`Seed selesai. Password semua akun: ${DEV_PASSWORD}`)
+}
+
+const CODE_PATTERN = /^([A-Z]+)-(\d{4})-(\d+)$/
+
+/**
+ * `nextCode` (modules/submissions/code.ts) allocates codes from `CodeCounter`,
+ * which starts empty — without this, the first real submissions in a category
+ * would collide with the `code`s hardcoded above and burn through retries. This
+ * derives each (prefix, period) counter from the actual seeded codes rather than
+ * hardcoding the current maxima, so it stays correct if `SUBMISSIONS` changes.
+ */
+async function seedCodeCounters(): Promise<void> {
+  const maxByKey = new Map<string, { readonly prefix: string; readonly period: string; readonly lastNumber: number }>()
+
+  for (const submission of SUBMISSIONS) {
+    const match = CODE_PATTERN.exec(submission.code)
+    const prefix = match?.[1]
+    const period = match?.[2]
+    const numberText = match?.[3]
+    if (!prefix || !period || !numberText) throw new Error(`Seed data error: malformed submission code ${submission.code}`)
+    const lastNumber = Number.parseInt(numberText, 10)
+    const key = `${prefix}:${period}`
+    const current = maxByKey.get(key)
+    if (!current || lastNumber > current.lastNumber) {
+      maxByKey.set(key, { prefix, period, lastNumber })
+    }
+  }
+
+  for (const { prefix, period, lastNumber } of maxByKey.values()) {
+    const existing = await prisma.codeCounter.findUnique({ where: { prefix_period: { prefix, period } } })
+    const target = Math.max(lastNumber, existing?.lastNumber ?? 0)
+    await prisma.codeCounter.upsert({
+      where: { prefix_period: { prefix, period } },
+      update: { lastNumber: target },
+      create: { prefix, period, lastNumber: target },
+    })
+  }
 }
 
 if (process.argv[1]?.endsWith('seed.ts')) {
