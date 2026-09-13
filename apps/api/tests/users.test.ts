@@ -71,7 +71,9 @@ describe('POST /users', () => {
       initials: 'KK',
       category: 'finance',
     }
-    expect((await admin.post('/users').send(body)).status).toBe(400)
+    const res = await admin.post('/users').send(body)
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('email_taken')
   })
 
   it('menolak sekret tanpa kategori', async () => {
@@ -85,6 +87,38 @@ describe('POST /users', () => {
       initials: 'TK',
     })
     expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('secretary_category_required')
+  })
+
+  it('menolak pengaju tanpa cluster', async () => {
+    // A submitter's cluster decides which monitor may read their documents.
+    // Guessing one (the old `?? 'HCRC'`) puts somebody's files in front of the
+    // wrong cluster monitor, so the account may not exist without it.
+    const admin = await loginAs(app, 'yoga.p@ui.ac.id', PW)
+    const res = await admin.post('/users').send({
+      email: 'tanpacluster@ui.ac.id',
+      password: 'sandi-kuat-123',
+      name: 'Tanpa Cluster',
+      type: 'submitter',
+      position: 'Pengaju',
+      initials: 'TC',
+    })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('submitter_cluster_required')
+  })
+
+  it('menolak monitor tanpa cluster', async () => {
+    const admin = await loginAs(app, 'yoga.p@ui.ac.id', PW)
+    const res = await admin.post('/users').send({
+      email: 'monitor@ui.ac.id',
+      password: 'sandi-kuat-123',
+      name: 'Monitor Tanpa Cluster',
+      type: 'monitor',
+      position: 'Monitor',
+      initials: 'MT',
+    })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('monitor_cluster_required')
   })
 
   it('non-admin ditolak', async () => {
@@ -127,5 +161,44 @@ describe('PATCH /users/:id', () => {
     await admin.patch(`/users/${target.id}`).send({ active: true })
 
     expect((await tuti.get('/auth/me')).status).toBe(401)
+  })
+
+  it('id yang tidak ada menjawab 404, bukan 500', async () => {
+    const admin = await loginAs(app, 'yoga.p@ui.ac.id', PW)
+    const res = await admin.patch('/users/tidak-ada-sama-sekali').send({ active: false })
+    expect(res.status).toBe(404)
+    expect(res.body.error.code).toBe('not_found')
+  })
+})
+
+describe('GET /users', () => {
+  it('admin menerima seluruh akun sebagai Role, tanpa hash sandi', async () => {
+    const admin = await loginAs(app, 'yoga.p@ui.ac.id', PW)
+    const res = await admin.get('/users')
+    expect(res.status).toBe(200)
+    // All twelve seeded accounts, observers included — this list is what the
+    // admin picks ids from before calling PATCH /users/:id.
+    expect(res.body.length).toBe(12)
+    for (const user of res.body) {
+      expect(user.passwordHash).toBeUndefined()
+      expect(user.email).toBeUndefined()
+      expect(user.id).toBeTruthy()
+      expect(user.type).toBeTruthy()
+    }
+  })
+
+  it('hasilnya bisa dipakai langsung untuk PATCH /users/:id', async () => {
+    const admin = await loginAs(app, 'yoga.p@ui.ac.id', PW)
+    const list = await admin.get('/users')
+    const target = list.body.find((u: { name: string }) => u.name === 'Tuti Marlina')
+    const res = await admin.patch(`/users/${target.id}`).send({ active: false })
+    expect(res.status).toBe(200)
+  })
+
+  it('non-admin ditolak', async () => {
+    const nadia = await loginAs(app, 'nadia.r@ui.ac.id', PW)
+    const res = await nadia.get('/users')
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe('admin_only')
   })
 })

@@ -1,4 +1,4 @@
-import type { Stage } from '@imeri/shared'
+import type { Category, Stage } from '@imeri/shared'
 import { STAGE_ORDER } from '@imeri/shared'
 import { prisma } from '../../db/client'
 
@@ -12,4 +12,20 @@ export async function loadStages(): Promise<readonly Stage[]> {
 export async function loadRoute(): Promise<Readonly<Record<string, string>>> {
   const rows = await prisma.categoryRoute.findMany()
   return Object.fromEntries(rows.map((row) => [row.category, row.secretaryId]))
+}
+
+export async function updateStageSla(
+  stageKey: Stage['key'],
+  slaDays: number,
+  updatedById: string,
+): Promise<void> {
+  await prisma.stageRule.update({ where: { stageKey }, data: { slaDays, updatedById } })
+}
+
+export async function updateCategoryRoute(
+  category: Category,
+  secretaryId: string,
+  updatedById: string,
+): Promise<void> {
+  await prisma.categoryRoute.update({ where: { category }, data: { secretaryId, updatedById } })
 }

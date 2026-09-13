@@ -18,6 +18,11 @@ export interface NewUser {
 export const userRepo = {
   byEmail: (email: string) => prisma.user.findUnique({ where: { email } }),
 
+  byId: (id: string) => prisma.user.findUnique({ where: { id } }),
+
+  /** Every account, active or not — the admin needs to see who to reactivate. */
+  all: () => prisma.user.findMany({ orderBy: { name: 'asc' } }),
+
   create: (data: NewUser) =>
     prisma.user.create({
       data: {

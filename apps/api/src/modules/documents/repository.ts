@@ -19,6 +19,9 @@ export const documentRepo = {
       data: { ...data, version: 1, isCurrent: true, status: 'pending' },
     }),
   byId: (id: string) => prisma.document.findUnique({ where: { id } }),
+  /** Uploads that were issued a presigned URL and never confirmed. */
+  pendingOlderThan: (cutoff: Date) =>
+    prisma.document.findMany({ where: { status: 'pending', createdAt: { lt: cutoff } } }),
   submissionById: (id: string) => prisma.submission.findUnique({ where: { id }, include: SUBMISSION_INCLUDE }),
   markReady: (id: string, sizeBytes: number) =>
     prisma.document.update({ where: { id }, data: { status: 'ready', sizeBytes } }),

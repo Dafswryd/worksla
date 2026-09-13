@@ -1,10 +1,15 @@
 import { Router } from 'express'
 import { z } from 'zod'
+import type { StageKey } from '@imeri/shared'
+import { STAGE_ORDER } from '@imeri/shared'
 import { BadRequest } from '../../errors'
 import { currentUser, requireAdmin, requireAuth } from '../../middleware/requireAuth'
 import { getFlowRules, setCategoryRoute, setStageSla } from './service'
 
-const STAGE_KEYS = ['submitter', 'secretary', 'deputy', 'director', 'recording', 'done'] as const
+// Derived from the canonical order in @imeri/shared rather than retyped: a
+// second hand-written copy of the stage list is a second thing to forget.
+// zod needs a non-empty tuple, which STAGE_ORDER always is.
+const STAGE_KEYS = STAGE_ORDER as readonly [StageKey, ...StageKey[]]
 const CATEGORIES = ['finance', 'personnel', 'general'] as const
 
 export const flowRuleRoutes = Router()

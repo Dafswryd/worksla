@@ -1,6 +1,6 @@
 import type { Cluster, Role, RoleType, StaffScope } from '@imeri/shared'
 import { toDomainRole } from '../../db/toDomain'
-import { BadRequest, Forbidden } from '../../errors'
+import { BadRequest, Forbidden, NotFound } from '../../errors'
 import { hashPassword } from '../auth/service'
 import { userRepo } from './repository'
 
@@ -67,14 +67,20 @@ export interface CreateUserInput {
  * decision, not something a visitor opts into.
  */
 export async function createUser(input: CreateUserInput): Promise<Role> {
-  // isHolder/isVisible in @imeri/shared key off exactly these two fields — a
-  // secretary without a category can never hold a document, and a monitor
-  // without a cluster can never see one. Reject rather than create a dead account.
-  if (input.type === 'secretary' && !input.category) throw BadRequest()
-  if (input.type === 'monitor' && !input.cluster) throw BadRequest()
+  // A secretary without a category cannot be routed anything, and a monitor
+  // without a cluster can never see one. Reject rather than create a dead
+  // account.
+  if (input.type === 'secretary' && !input.category) throw BadRequest('secretary_category_required')
+  if (input.type === 'monitor' && !input.cluster) throw BadRequest('monitor_cluster_required')
+
+  // A submitter's cluster is stamped onto every submission they create, and it
+  // is what decides which cluster monitor may read those documents. There is no
+  // safe default: guessing one files someone's documents where the wrong
+  // monitor sees them.
+  if (input.type === 'submitter' && !input.cluster) throw BadRequest('submitter_cluster_required')
 
   const existing = await userRepo.byEmail(input.email)
-  if (existing) throw BadRequest()
+  if (existing) throw BadRequest('email_taken')
 
   const user = await userRepo.create({
     email: input.email,
@@ -97,7 +103,22 @@ export async function createUser(input: CreateUserInput): Promise<Role> {
  * that moment, not whenever a token happens to expire.
  */
 export async function setUserActive(id: string, active: boolean): Promise<Role> {
+  // An id that matches nothing is a missing account, not a server fault:
+  // without this, Prisma's P2025 escapes as a 500.
+  const existing = await userRepo.byId(id)
+  if (!existing) throw NotFound()
+
   const user = await userRepo.setActive(id, active)
   if (!active) await userRepo.deleteSessions(id)
   return toDomainRole(user)
+}
+
+/**
+ * The account list behind the admin screen. Domain `Role` objects only — the
+ * Prisma row carries `passwordHash`, and it must never leave this process.
+ */
+export async function listUsers(role: Role): Promise<readonly Role[]> {
+  if (role.type !== 'admin') throw Forbidden('admin_only')
+  const users = await userRepo.all()
+  return users.map(toDomainRole)
 }

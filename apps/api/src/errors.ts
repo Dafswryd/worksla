@@ -14,6 +14,15 @@ export type ErrorCode =
   | 'unsupported_file_type'
   | 'invalid_credentials'
   | 'admin_only'
+  // Admin-surface rejections. These used to share `bad_request` with a dozen
+  // other causes, which left the super admin staring at one opaque code for
+  // five entirely different mistakes — each with a different fix.
+  | 'email_taken'
+  | 'secretary_category_required'
+  | 'monitor_cluster_required'
+  | 'submitter_cluster_required'
+  | 'sla_out_of_range'
+  | 'route_target_invalid'
   | 'internal'
 
 export class ApiError extends Error {

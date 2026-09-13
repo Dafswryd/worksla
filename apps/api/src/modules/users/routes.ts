@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { BadRequest } from '../../errors'
 import { currentUser, requireAdmin, requireAuth } from '../../middleware/requireAuth'
-import { createUser, listStaff, setUserActive } from './service'
+import { createUser, listStaff, listUsers, setUserActive } from './service'
 
 const ROLE_TYPES = ['submitter', 'secretary', 'deputy', 'director', 'admin', 'monitor'] as const
 const CATEGORIES = ['finance', 'personnel', 'general'] as const
@@ -24,6 +24,10 @@ const createUserInput = z.object({
 
 export const userRoutes = Router()
 userRoutes.use(requireAuth)
+
+userRoutes.get('/', requireAdmin, async (req, res) => {
+  res.json(await listUsers(currentUser(req)))
+})
 
 userRoutes.post('/', requireAdmin, async (req, res) => {
   const parsed = createUserInput.safeParse(req.body)

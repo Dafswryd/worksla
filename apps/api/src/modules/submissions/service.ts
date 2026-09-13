@@ -80,6 +80,14 @@ const MAX_CODE_ATTEMPTS = 10
 export async function createSubmission(user: Role, input: CreateInput): Promise<Submission> {
   if (user.type !== 'submitter') throw Forbidden('not_your_desk')
 
+  // No `?? 'HCRC'` fallback: the cluster on a submission is what decides which
+  // cluster monitor may read it, so defaulting a missing one files somebody's
+  // documents under a cluster they do not belong to, in front of the wrong
+  // monitor. `createUser` refuses to create a cluster-less submitter, so this
+  // can only be a pre-existing row — and it must stop here, not be guessed.
+  const { cluster } = user
+  if (!cluster) throw BadRequest('submitter_cluster_required')
+
   await confirmUploaded(input.primaryDocumentId, user.id)
   for (const id of input.supportingDocumentIds) await confirmUploaded(id, user.id)
 
@@ -108,7 +116,7 @@ export async function createSubmission(user: Role, input: CreateInput): Promise<
             ...(input.summary === undefined ? {} : { summary: input.summary }),
             requesterId: user.id,
             assignedSecretaryId,
-            cluster: user.cluster ?? 'HCRC',
+            cluster,
             category: input.category,
             stageKey: 'secretary',
             status: 'running',
