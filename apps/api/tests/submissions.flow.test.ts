@@ -16,6 +16,14 @@ async function atSecretary(): Promise<string> {
   return row.code
 }
 
+/** A secretary-stage submission outside Nadia's cluster (HCRC). */
+async function atSecretaryOutsideHcrc(): Promise<string> {
+  const row = await prisma.submission.findFirstOrThrow({
+    where: { stageKey: 'secretary', status: 'running', cluster: { not: 'HCRC' } },
+  })
+  return row.code
+}
+
 beforeEach(async () => {
   await resetDb()
   await seed()
@@ -40,11 +48,20 @@ describe('POST /submissions/:code/advance', () => {
     expect(res.body.error.code).toBe('not_your_desk')
   })
 
-  it('monitor tidak bisa meneruskan apa pun', async () => {
-    const code = await atSecretary()
+  it('monitor di dalam klasternya sendiri tetap tidak bisa meneruskan', async () => {
+    const code = await atSecretary() // finance/secretary, cluster HCRC — Nadia's own cluster
     const nadia = await loginAs(app, 'nadia.r@ui.ac.id', PW)
     const res = await nadia.post(`/submissions/${code}/advance`).send({})
-    expect([403, 404]).toContain(res.status)
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe('not_your_desk')
+  })
+
+  it('monitor di luar klasternya mendapat 404, bukan 403', async () => {
+    const code = await atSecretaryOutsideHcrc()
+    const nadia = await loginAs(app, 'nadia.r@ui.ac.id', PW)
+    const res = await nadia.post(`/submissions/${code}/advance`).send({})
+    expect(res.status).toBe(404)
+    expect(res.body.error.code).toBe('not_found')
   })
 
   it('catatan opsional tercatat di riwayat tanpa menjadi checklist', async () => {
@@ -131,10 +148,35 @@ describe('checklist mengunci', () => {
     expect(ok.body.checklist).toHaveLength(0)
   })
 
-  it('orang yang tidak memegang berkas tidak bisa mencentang', async () => {
-    const row = await prisma.submission.findFirstOrThrow({ where: { status: 'returned' }, include: { checklist: true } })
-    const sari = await loginAs(app, 'sari.d@ui.ac.id', PW)
-    const res = await sari.patch(`/submissions/${row.code}/checklist/${row.checklist[0]!.id}`).send({ done: true })
+  it('sekret dalam cakupan tapi bukan pemegang berkas ditolak 403', async () => {
+    // Returned to `submitter` stage, held by the requester — not by Budi, even
+    // though he is the personnel secretary and can see the submission fine.
+    const row = await prisma.submission.findFirstOrThrow({
+      where: { status: 'returned', category: 'personnel' },
+      include: { checklist: true },
+    })
+    const budi = await loginAs(app, 'budi.s@ui.ac.id', PW)
+    const res = await budi.patch(`/submissions/${row.code}/checklist/${row.checklist[0]!.id}`).send({ done: true })
     expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe('not_your_desk')
+  })
+
+  it('sekret di luar cakupan mendapat 404, sama seperti GET', async () => {
+    // Sari is a finance secretary; this submission is personnel — out of her
+    // scope entirely, not merely "not her desk". A mutating endpoint must give
+    // the same actor, same document, the same signal the read endpoint does.
+    const row = await prisma.submission.findFirstOrThrow({
+      where: { status: 'returned', category: 'personnel' },
+      include: { checklist: true },
+    })
+    const sari = await loginAs(app, 'sari.d@ui.ac.id', PW)
+
+    const patchRes = await sari.patch(`/submissions/${row.code}/checklist/${row.checklist[0]!.id}`).send({ done: true })
+    const getRes = await sari.get(`/submissions/${row.code}`)
+
+    expect(patchRes.status).toBe(getRes.status)
+    expect(patchRes.body.error.code).toBe(getRes.body.error.code)
+    expect(patchRes.status).toBe(404)
+    expect(patchRes.body.error.code).toBe('not_found')
   })
 })

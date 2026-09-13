@@ -148,15 +148,20 @@ const DESK_NAME: Partial<Record<string, string>> = {
 /**
  * Load, lock, and run the shared rules. Every mutating action goes through here.
  *
- * Authorisation here is `isHolder` alone, not `isVisible` + `isHolder`. For every
- * role branch `isHolder` implies `isVisible` (same category/cluster/requester
- * conditions, plus the stage check) — a role holding the desk is always a role
- * that can see the submission, so `isHolder` is already the stricter, correct
- * gate. Layering `isVisible` in front of it would mask a genuine "not your desk"
- * with a 404 whenever the caller's scope (e.g. a secretary's category) doesn't
- * happen to match the submission — which is exactly the case for a secretary
- * of one category acting on a returned submission that was routed to another
- * category's desk. That should read as "not your desk" (403), not "not found".
+ * Two gates, in this order, and the order is load-bearing:
+ *
+ * 1. `isVisible` → `NotFound`. `isHolder` implies `isVisible` for every role
+ *    branch, so this gate never rejects a genuine holder — but it does reject
+ *    an actor who is entirely out of scope (wrong category, wrong cluster,
+ *    someone else's request) before `isHolder` even runs. That matters for the
+ *    *status code*, not just who eventually succeeds: `getVisible` already
+ *    returns 404 for an out-of-scope read ("out of scope reads as missing:
+ *    403 would confirm the code exists"), and a mutating endpoint must give the
+ *    same actor, same document, the same signal — otherwise a 403 on `advance`
+ *    would confirm a code exists that the matching `GET` claims not to.
+ * 2. `isHolder` → `Forbidden('not_your_desk')`. Once visibility is established,
+ *    this is what distinguishes "you can see this desk, it just isn't yours
+ *    right now" from being denied outright.
  */
 async function guarded<T>(
   code: string,
@@ -173,6 +178,7 @@ async function guarded<T>(
     const row = await lockAndLoad(tx, code)
     if (!row) throw NotFound()
     const submission = toDomainSubmission(row)
+    if (!isVisible(submission, role)) throw NotFound()
     if (!isHolder(submission, role, stages)) throw Forbidden('not_your_desk')
     return run({ tx, row, submission, stages })
   })
