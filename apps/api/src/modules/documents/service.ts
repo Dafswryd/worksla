@@ -3,7 +3,7 @@ import type { Role, Submission } from '@imeri/shared'
 import { isHolder, isVisible } from '@imeri/shared'
 import { prisma } from '../../db/client'
 import { toDomainSubmission } from '../../db/toDomain'
-import { BadRequest, Forbidden, NotFound } from '../../errors'
+import { BadRequest, Conflict, Forbidden, NotFound } from '../../errors'
 import { env } from '../../env'
 import { loadStages } from '../flowRules/repository'
 import { SUBMISSION_INCLUDE, lockAndLoad } from '../submissions/repository'
@@ -119,18 +119,19 @@ export async function attachDocument(
       throw Forbidden('not_your_desk')
     }
 
+    // Document ids are only ever handed to the client that uploaded them (via
+    // POST /documents/upload-url), so this is mainly a guard against a stale
+    // id from a previous, unrelated submission — not discoverable cross-user,
+    // but an easy accident: silently re-pointing someone's already-attached
+    // document here would make it vanish from wherever it actually belongs.
+    const document = await tx.document.findUnique({ where: { id: documentId } })
+    if (!document || document.uploadedById !== role.id) throw BadRequest('document_not_owned')
+    if (document.submissionId !== null) throw Conflict('document_already_attached')
+
     const previous = await tx.document.findFirst({
       where: { submissionId: row.id, kind, isCurrent: true },
       orderBy: { version: 'desc' },
     })
-
-    // Seed data backdates/forward-dates history entries deliberately (see
-    // prisma/seed.ts) so demo submissions look like they took days, which can
-    // put a seeded entry's `createdAt` ahead of the real "now". A newly created
-    // entry must still sort after every entry that already exists, so its
-    // timestamp is pinned to whichever is later.
-    const latestExisting = row.history.reduce((max, item) => Math.max(max, item.createdAt.getTime()), 0)
-    const createdAt = new Date(Math.max(Date.now(), latestExisting + 1))
 
     const entry = await tx.historyEntry.create({
       data: {
@@ -146,14 +147,18 @@ export async function attachDocument(
         ...(note === undefined || note.trim() === '' ? {} : { comment: note.trim() }),
         fromStage: row.stageKey,
         toStage: row.stageKey,
-        createdAt,
       },
     })
 
+    // Re-checked in the write itself (not just above) to close the TOCTOU
+    // window: two concurrent attaches racing on the same stale document id
+    // must leave exactly one of them attached, never both.
+    const claim = { id: documentId, uploadedById: role.id, submissionId: null }
+    let updated: { count: number }
     if (kind === 'primary' && previous) {
       await tx.document.update({ where: { id: previous.id }, data: { isCurrent: false } })
-      await tx.document.update({
-        where: { id: documentId },
+      updated = await tx.document.updateMany({
+        where: claim,
         data: {
           submissionId: row.id,
           historyEntryId: entry.id,
@@ -163,11 +168,12 @@ export async function attachDocument(
         },
       })
     } else {
-      await tx.document.update({
-        where: { id: documentId },
+      updated = await tx.document.updateMany({
+        where: claim,
         data: { submissionId: row.id, historyEntryId: entry.id, isCurrent: true },
       })
     }
+    if (updated.count !== 1) throw Conflict('document_already_attached')
 
     const fresh = await tx.submission.findUniqueOrThrow({ where: { id: row.id }, include: SUBMISSION_INCLUDE })
     return toDomainSubmission(fresh)

@@ -59,7 +59,11 @@ const MAX_CODE_ATTEMPTS = 10
  *
  * Every document id is verified with `confirmUploaded` (real object in the store,
  * real size) before the submission is written — a reference to an object that never
- * landed in MinIO is worse than a rejected request.
+ * landed in MinIO is worse than a rejected request. Each id is also checked, inside
+ * the same transaction that writes the submission, for ownership (`uploadedById`)
+ * and for not already belonging to some other submission — otherwise a stale id
+ * from an earlier upload could silently re-point a document that already belongs
+ * elsewhere, making it vanish from that other submission.
  *
  * Code allocation runs as its own small transaction, separate from the submission
  * write: `nextCode`'s increment must survive even when the write that follows it
@@ -80,11 +84,20 @@ export async function createSubmission(user: Role, input: CreateInput): Promise<
   const assignedSecretaryId = route[input.category]
   if (!assignedSecretaryId) throw BadRequest()
 
+  const documentIds = [input.primaryDocumentId, ...input.supportingDocumentIds]
+
   for (let attempt = 1; ; attempt++) {
     const code = await prisma.$transaction((tx) => nextCode(tx, input.category))
 
     try {
       const row = await prisma.$transaction(async (tx) => {
+        const documents = await tx.document.findMany({ where: { id: { in: documentIds } } })
+        for (const id of documentIds) {
+          const document = documents.find((d) => d.id === id)
+          if (!document || document.uploadedById !== user.id) throw BadRequest('document_not_owned')
+          if (document.submissionId !== null) throw Conflict('document_already_attached')
+        }
+
         const submission = await tx.submission.create({
           data: {
             code,
@@ -114,10 +127,14 @@ export async function createSubmission(user: Role, input: CreateInput): Promise<
           },
         })
 
-        await tx.document.updateMany({
-          where: { id: { in: [input.primaryDocumentId, ...input.supportingDocumentIds] } },
+        // Re-checked in the write itself (not just above) to close the TOCTOU
+        // window: two concurrent submissions racing on the same stale document
+        // id must leave it attached to exactly one of them, never both.
+        const updated = await tx.document.updateMany({
+          where: { id: { in: documentIds }, uploadedById: user.id, submissionId: null },
           data: { submissionId: submission.id, historyEntryId: entry.id },
         })
+        if (updated.count !== documentIds.length) throw Conflict('document_already_attached')
 
         return tx.submission.findUniqueOrThrow({ where: { id: submission.id }, include: SUBMISSION_INCLUDE })
       })

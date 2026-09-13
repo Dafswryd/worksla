@@ -6,6 +6,8 @@ export type ErrorCode =
   | 'checklist_open'
   | 'comment_required'
   | 'primary_document_frozen'
+  | 'document_not_owned'
+  | 'document_already_attached'
   | 'document_not_uploaded'
   | 'file_too_large'
   | 'unsupported_file_type'

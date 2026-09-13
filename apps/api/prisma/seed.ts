@@ -280,6 +280,13 @@ function buildHistory(
  * A returned submission's `ChecklistItem` rows carry that entry's id
  * (`historyEntryId`), never the submission's alone.
  *
+ * All of it is anchored so the LAST entry lands strictly before "now", the
+ * same way `stageEnteredAt` below is backdated rather than forward-dated:
+ * these events already happened, so their timestamps must never land in the
+ * future. Code that appends a new, real entry afterwards (e.g. attaching a
+ * document) is entitled to assume plain `now()` sorts after every entry a
+ * submission already has.
+ *
  * `stageEnteredAt` is backdated by `daysInStage - 1` days so the derived day
  * count on screen (`daysSince`) reproduces the prototype's "hari n/m" label.
  * Day one is the day the document arrived at its current stage, hence -1.
@@ -337,7 +344,9 @@ async function createSubmission(
     { id: directorId, name: director.name, position: director.position },
   )
 
-  const base = Date.now()
+  // Backdated so the last entry (i = entries.length - 1) still lands strictly
+  // before "now", never after it — see the doc comment above.
+  const base = Date.now() - entries.length * 1000
   let returnEntryId: string | undefined
 
   for (let i = 0; i < entries.length; i += 1) {
