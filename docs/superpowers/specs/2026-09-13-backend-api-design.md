@@ -77,8 +77,19 @@ dikerjakan object store dengan lebih baik.
 
 ### 2.4 Sekret dikunci saat pengajuan dibuat
 
-**Keputusan:** `Submission.assignedSecretaryId` diisi saat pembuatan dan tidak
-pernah berubah. Tampilan maupun izin sama-sama membacanya.
+**Keputusan:** `Submission.assignedSecretaryId` diisi dari rute yang berlaku
+saat pembuatan dan tidak pernah berubah. Tampilan maupun izin sama-sama
+membacanya, dan tidak ada satu pun dari keduanya yang membaca rute terkini.
+
+Wujudnya di kode:
+
+- `isVisible` — `role.type === 'secretary'` → `submission.assignedSecretaryId === role.id`
+- `isHolder` untuk tahap `secretary` dan `recording` → syarat yang sama
+- `holderOf` di `apps/web` mengambil sekretnya dari `assignedSecretaryId`, bukan
+  `route[category]`
+
+`User.category` milik sekret tinggal menjadi keterangan administratif — label
+bidang kerjanya — bukan lagi sumber izin.
 
 **Alasan:** di prototipe ada dua sumber kebenaran yang berbeda — layar
 menampilkan pemegang lewat `route[category]` (rute terkini), sementara izin
@@ -86,12 +97,19 @@ dihitung lewat `submission.category === role.category`. Selama rute belum pernah
 diubah keduanya kebetulan sama; begitu Super Admin memindah kategori, layar dan
 izin berpisah. Mengunci penugasan menutupnya lewat bentuk data, bukan tambalan.
 
+Yang ditutup persisnya: kalau `finance` dialihkan ke Budi (sekret
+kepegawaian), pengajuan finance baru tetap distempel `assignedSecretaryId =
+budi`, tetapi aturan lama membuat `isVisible` untuk Budi bernilai salah —
+berkasnya mendarat di meja yang tidak ada, sementara Sari masih bisa membaca
+dan menekan `advance`/`return` atas berkas yang bukan lagi miliknya.
+
 Ini juga membuat kalimat yang sudah tertulis di layar Aturan Alur — *"Mengubah
 rute hanya berlaku untuk pengajuan baru"* — akhirnya benar.
 
-**Trade-off:** kalau seorang sekret cuti atau resign, berkasnya tidak berpindah
-sendiri. Pemindahan manual per berkas tidak masuk pilot; ditunda sampai
-kebutuhannya terbukti.
+**Trade-off:** kalau seorang sekret cuti atau resign, Super Admin memindahkan
+rute kategorinya, dan itu hanya mengenai pengajuan baru — berkas yang sudah
+berjalan tetap pada sekret lamanya. Pemindahan manual per berkas tidak masuk
+pilot; ditunda sampai kebutuhannya terbukti.
 
 ### 2.5 Paraf & tanda tangan hanya catatan persetujuan
 

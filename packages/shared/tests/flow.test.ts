@@ -58,6 +58,7 @@ function make(over: Partial<Submission> = {}): Submission {
     requesterId: 'rina',
     cluster: 'HCRC',
     category: 'finance',
+    assignedSecretaryId: 'sari',
     createdAt: '1 Sep 2026',
     stageKey: 'secretary',
     daysInStage: 1,
@@ -95,9 +96,9 @@ describe('isVisible', () => {
     expect(isVisible(make({ requesterId: 'andi' }), rina)).toBe(false)
   })
 
-  it('sekret hanya melihat kategorinya', () => {
-    expect(isVisible(make({ category: 'finance' }), sari)).toBe(true)
-    expect(isVisible(make({ category: 'personnel' }), sari)).toBe(false)
+  it('sekret hanya melihat berkas yang ditugaskan kepadanya', () => {
+    expect(isVisible(make({ assignedSecretaryId: 'sari' }), sari)).toBe(true)
+    expect(isVisible(make({ assignedSecretaryId: 'budi' }), sari)).toBe(false)
   })
 
   it('monitor hanya melihat clusternya', () => {
@@ -122,10 +123,10 @@ describe('isHolder', () => {
     expect(isHolder(s, sari, STAGES)).toBe(false)
   })
 
-  it('tahap secretary dan recording dipegang sekret berkategori sama', () => {
-    expect(isHolder(make({ stageKey: 'secretary', category: 'finance' }), sari, STAGES)).toBe(true)
-    expect(isHolder(make({ stageKey: 'recording', category: 'finance' }), sari, STAGES)).toBe(true)
-    expect(isHolder(make({ stageKey: 'secretary', category: 'finance' }), budi, STAGES)).toBe(false)
+  it('tahap secretary dan recording dipegang sekret yang ditugaskan', () => {
+    expect(isHolder(make({ stageKey: 'secretary', assignedSecretaryId: 'sari' }), sari, STAGES)).toBe(true)
+    expect(isHolder(make({ stageKey: 'recording', assignedSecretaryId: 'sari' }), sari, STAGES)).toBe(true)
+    expect(isHolder(make({ stageKey: 'secretary', assignedSecretaryId: 'sari' }), budi, STAGES)).toBe(false)
   })
 
   it('tahap deputy dipegang wadir saja', () => {
@@ -143,6 +144,26 @@ describe('isHolder', () => {
       expect(isHolder(make({ stageKey: key }), nadia, STAGES)).toBe(false)
       expect(isHolder(make({ stageKey: key }), yoga, STAGES)).toBe(false)
     }
+  })
+})
+
+describe('penugasan sekret mengalahkan kategori', () => {
+  // The super admin re-routed `finance` to Budi, whose own User.category is
+  // still `personnel`. Everything about this document must follow the stored
+  // assignment: under the old `submission.category === role.category` rule it
+  // was visible to nobody who could act on it, while Sari — who no longer
+  // receives finance at all — kept full read plus advance/return rights.
+  const routedToBudi = make({ category: 'finance', assignedSecretaryId: 'budi', stageKey: 'secretary' })
+
+  it('sekret yang ditugaskan melihat dan memegang berkasnya', () => {
+    expect(isVisible(routedToBudi, budi)).toBe(true)
+    expect(isHolder(routedToBudi, budi, STAGES)).toBe(true)
+    expect(isHolder(make({ ...routedToBudi, stageKey: 'recording' }), budi, STAGES)).toBe(true)
+  })
+
+  it('sekret lama kategori itu tidak melihat maupun memegangnya', () => {
+    expect(isVisible(routedToBudi, sari)).toBe(false)
+    expect(isHolder(routedToBudi, sari, STAGES)).toBe(false)
   })
 })
 

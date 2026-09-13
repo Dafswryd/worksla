@@ -49,6 +49,13 @@ export interface Submission {
   readonly requesterId: string
   readonly cluster: Cluster
   readonly category: Category
+  /**
+   * The secretary locked onto this submission when it was created. Both the
+   * displayed holder and the permission check read this, never the current
+   * category route — re-routing a category must not move documents already
+   * in flight, nor hand them to someone the stored assignment never named.
+   */
+  readonly assignedSecretaryId: string
   readonly createdAt: string
   /** Which desk the document is sitting at. */
   readonly stageKey: StageKey

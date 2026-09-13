@@ -13,7 +13,7 @@ interface OverdueProps {
 
 /** Documents past their deadline, longest wait first. */
 export function Overdue({ list, onOpen }: OverdueProps) {
-  const { stages, route } = useAtomValue(flowAtom)
+  const { stages } = useAtomValue(flowAtom)
   const sorted = [...list].sort((a, b) => overdueDays(b, stages) - overdueDays(a, stages))
 
   if (sorted.length === 0) return <p className="p-empty">Tidak ada berkas yang lewat batas waktu.</p>
@@ -21,7 +21,7 @@ export function Overdue({ list, onOpen }: OverdueProps) {
   return (
     <div style={{ padding: '6px 0 8px' }}>
       {sorted.map((submission) => {
-        const holder = holderOf(submission, stages, route)
+        const holder = holderOf(submission, stages)
         return (
           <button
             type="button"

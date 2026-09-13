@@ -28,7 +28,7 @@ function averageCompletion(cluster: string | undefined): number {
 export default function Monitoring() {
   const role = useAtomValue(activeRoleAtom)
   const list = useAtomValue(submissionsAtom)
-  const { stages, route } = useAtomValue(flowAtom)
+  const { stages } = useAtomValue(flowAtom)
   const [openCode, setOpenCode] = useAtom(openCodeAtom)
   const navigate = useNavigate()
 
@@ -131,7 +131,7 @@ export default function Monitoring() {
                 Lihat semua <Icon name="arrowRight" size={14} strokeWidth={2} />
               </button>
             </div>
-            <WorkloadTable rows={workloadRows(scoped, stages, route, role)} full={false} />
+            <WorkloadTable rows={workloadRows(scoped, stages, role)} full={false} />
           </div>
         </div>
 

@@ -84,7 +84,7 @@ function StageTimeline({
 }
 
 export function SubmissionDrawer({ submission, onClose }: SubmissionDrawerProps) {
-  const { stages, route } = useAtomValue(flowAtom)
+  const { stages } = useAtomValue(flowAtom)
   const role = useAtomValue(activeRoleAtom)
   const { advance, sendBack, toggleChecklist } = useFlowActions()
   const toast = useToast()
@@ -99,7 +99,7 @@ export function SubmissionDrawer({ submission, onClose }: SubmissionDrawerProps)
   }, [onClose, rejectOpen])
 
   const holding = isHolder(submission, role, stages)
-  const holder = holderOf(submission, stages, route)
+  const holder = holderOf(submission, stages)
   const stage = stageByKey(stages, submission.stageKey)
   const advanceLabel = ADVANCE_LABEL[stage.key]
   const returnLabel = RETURN_LABEL[stage.key]
@@ -162,7 +162,7 @@ export function SubmissionDrawer({ submission, onClose }: SubmissionDrawerProps)
             <dt>Kategori</dt>
             <dd>{CATEGORY_LABEL[submission.category]}</dd>
             <dt>Sekret tujuan</dt>
-            <dd>{roleById(route[submission.category]).name}</dd>
+            <dd>{roleById(submission.assignedSecretaryId).name}</dd>
           </dl>
 
           <p className="task-drawer-label">Posisi berkas</p>

@@ -3,7 +3,7 @@ import { roleById } from '@/constants/roles'
 import { STAFF } from '@/constants/staff'
 import { STAGE_LABEL } from '@/constants/stages'
 import { initialsOf, percent } from './format'
-import type { CategoryRoute, Role, Stage, Staff, Submission } from '@/types'
+import type { Role, Stage, Staff, Submission } from '@/types'
 
 export interface Holder {
   readonly name: string
@@ -11,8 +11,15 @@ export interface Holder {
   readonly position: string
 }
 
-/** Who is holding this document right now. */
-export function holderOf(submission: Submission, stages: readonly Stage[], route: CategoryRoute): Holder {
+/**
+ * Who is holding this document right now.
+ *
+ * The secretary comes from the submission's own stored assignment, not from the
+ * current category route: those two answers part company the moment the super
+ * admin re-routes a category, and the stored one is what the permission rules
+ * in `@imeri/shared` read. Display and permission must never disagree.
+ */
+export function holderOf(submission: Submission, stages: readonly Stage[]): Holder {
   if (submission.status === 'done') return { name: '—', initials: '✓', position: 'Arsip' }
 
   const { key } = stageByKey(stages, submission.stageKey)
@@ -20,7 +27,7 @@ export function holderOf(submission: Submission, stages: readonly Stage[], route
     return { name: submission.requester, initials: initialsOf(submission.requester), position: 'menunggu perbaikan' }
   }
   if (key === 'secretary' || key === 'recording') {
-    const secretary = roleById(route[submission.category])
+    const secretary = roleById(submission.assignedSecretaryId)
     return { name: secretary.name, initials: secretary.initials, position: secretary.position }
   }
   if (key === 'deputy') {
@@ -91,7 +98,6 @@ export interface WorkloadRow {
 export function workloadRows(
   list: readonly Submission[],
   stages: readonly Stage[],
-  route: CategoryRoute,
   role: Role,
 ): readonly WorkloadRow[] {
   const people =
@@ -99,7 +105,7 @@ export function workloadRows(
 
   return people.map((staff) => {
     const held = list.filter(
-      (item) => item.status !== 'done' && holderOf(item, stages, route).name === staff.name,
+      (item) => item.status !== 'done' && holderOf(item, stages).name === staff.name,
     )
     return {
       staff,

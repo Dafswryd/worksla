@@ -134,3 +134,53 @@ describe('POST /submissions', () => {
     expect(newNumber).toBeGreaterThan(highestSeeded)
   })
 })
+
+describe('rute kategori dipindah ke sekret lain', () => {
+  /**
+   * The scenario the build silently got wrong. Finance is re-routed to Budi,
+   * whose own `User.category` is `personnel`. Everything about a submission
+   * created afterwards must follow the stored `assignedSecretaryId`:
+   *
+   * - Budi sees it and can act on it, even though its category is not his;
+   * - Sari, the previous finance secretary, is out of scope entirely and gets
+   *   404 — the same signal `GET` gives her, never a 403 that would confirm
+   *   the code exists.
+   *
+   * Against the old `submission.category === role.category` rule the document
+   * landed on nobody's desk: Budi got 404 on his own assignment while Sari
+   * kept full read plus advance/return rights over it.
+   */
+  it('sekret baru memegang berkasnya, sekret lama kehilangan aksesnya', async () => {
+    const admin = await loginAs(app, 'yoga.p@ui.ac.id', PW)
+    const budiRow = await prisma.user.findUniqueOrThrow({ where: { email: 'budi.s@ui.ac.id' } })
+    const routed = await admin.put('/flow-rules/routes/finance').send({ secretaryId: budiRow.id })
+    expect(routed.status).toBe(200)
+
+    const rina = await loginAs(app, 'rina.k@ui.ac.id', PW)
+    const primary = await uploadedDocument(rina, 'primary')
+    const created = await rina.post('/submissions').send({
+      title: 'Pengadaan rak arsip setelah rute pindah',
+      category: 'finance',
+      primaryDocumentId: primary,
+      supportingDocumentIds: [],
+    })
+    expect(created.status).toBe(201)
+    const code = created.body.code as string
+
+    const budi = await loginAs(app, 'budi.s@ui.ac.id', PW)
+    const seen = await budi.get(`/submissions/${code}`)
+    expect(seen.status).toBe(200)
+
+    const inbox = await budi.get('/submissions')
+    expect(inbox.body.some((item: { code: string }) => item.code === code)).toBe(true)
+
+    const moved = await budi.post(`/submissions/${code}/advance`).send({})
+    expect(moved.status).toBe(200)
+    expect(moved.body.stageKey).toBe('deputy')
+
+    const sari = await loginAs(app, 'sari.d@ui.ac.id', PW)
+    const denied = await sari.get(`/submissions/${code}`)
+    expect(denied.status).toBe(404)
+    expect(denied.body.error.code).toBe('not_found')
+  })
+})

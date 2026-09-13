@@ -9,10 +9,17 @@ import { stageByKey } from './stages.js'
 /** Read-only roles: super admin and cluster monitor. */
 export const isObserver = (role: Role): boolean => role.type === 'admin' || role.type === 'monitor'
 
-/** Whether this document falls within the role's scope. */
+/**
+ * Whether this document falls within the role's scope.
+ *
+ * A secretary's scope is the set of submissions actually assigned to them
+ * (`assignedSecretaryId`), not everything sharing their category: once the
+ * super admin re-routes a category, those two answers diverge, and the stored
+ * assignment is the one that says whose desk the document is really on.
+ */
 export function isVisible(submission: Submission, role: Role): boolean {
   if (role.type === 'submitter') return submission.requesterId === role.id
-  if (role.type === 'secretary') return submission.category === role.category
+  if (role.type === 'secretary') return submission.assignedSecretaryId === role.id
   if (role.type === 'monitor') return submission.cluster === role.cluster
   return true
 }
@@ -23,7 +30,7 @@ export function isHolder(submission: Submission, role: Role, stages: readonly St
   const { key } = stageByKey(stages, submission.stageKey)
   if (key === 'submitter') return role.type === 'submitter' && submission.requesterId === role.id
   if (key === 'secretary' || key === 'recording') {
-    return role.type === 'secretary' && submission.category === role.category
+    return role.type === 'secretary' && submission.assignedSecretaryId === role.id
   }
   if (key === 'deputy') return role.type === 'deputy'
   if (key === 'director') return role.type === 'director'

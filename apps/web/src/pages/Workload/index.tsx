@@ -11,7 +11,7 @@ import { WorkloadTable } from '@/pages/Monitoring/components/WorkloadTable'
 export default function Workload() {
   const role = useAtomValue(activeRoleAtom)
   const list = useAtomValue(submissionsAtom)
-  const { stages, route } = useAtomValue(flowAtom)
+  const { stages } = useAtomValue(flowAtom)
 
   if (!isObserver(role)) return <Navigate to="/" replace />
 
@@ -31,7 +31,7 @@ export default function Workload() {
       </div>
 
       <div className="card">
-        <WorkloadTable rows={workloadRows(scoped, stages, route, role)} full />
+        <WorkloadTable rows={workloadRows(scoped, stages, role)} full />
       </div>
     </div>
   )

@@ -68,6 +68,7 @@ export function toDomainSubmission(row: SubmissionRow, now: Date = new Date()): 
     requesterId: row.requesterId,
     cluster: row.cluster,
     category: row.category,
+    assignedSecretaryId: row.assignedSecretaryId,
     createdAt: row.createdAt.toISOString(),
     stageKey: row.stageKey,
     daysInStage: row.status === 'done' ? 0 : daysSince(row.stageEnteredAt, now),

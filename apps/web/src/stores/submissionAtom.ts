@@ -133,6 +133,9 @@ export function useFlowActions() {
         requesterId: role.id,
         cluster: 'HCRC',
         category,
+        // Read from the active route once, here, and stored on the document —
+        // exactly as the API does it. A later route change must not move it.
+        assignedSecretaryId: route[category],
         createdAt: '12 Sep 2026',
         stageKey: 'secretary',
         daysInStage: 1,

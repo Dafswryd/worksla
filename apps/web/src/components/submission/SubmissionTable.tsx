@@ -30,7 +30,7 @@ function SlaCell({ submission, stages }: { readonly submission: Submission; read
 }
 
 export function SubmissionTable({ list, activeCode, onOpen, emptyText }: SubmissionTableProps) {
-  const { stages, route } = useAtomValue(flowAtom)
+  const { stages } = useAtomValue(flowAtom)
 
   return (
     <>
@@ -46,7 +46,7 @@ export function SubmissionTable({ list, activeCode, onOpen, emptyText }: Submiss
         <p className="p-empty">{emptyText ?? 'Tidak ada berkas di tampilan ini.'}</p>
       ) : (
         list.map((submission) => {
-          const holder = holderOf(submission, stages, route)
+          const holder = holderOf(submission, stages)
           const dot =
             submission.status === 'done'
               ? 'done'
