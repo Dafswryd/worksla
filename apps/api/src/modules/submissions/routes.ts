@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { BadRequest } from '../../errors'
 import { currentUser, requireAuth } from '../../middleware/requireAuth'
+import { attachDocument } from '../documents/service'
 import { advance, createSubmission, getVisible, listVisible, sendBack, toggleChecklistItem } from './service'
 
 export const submissionRoutes = Router()
@@ -19,6 +20,11 @@ const createInput = z.object({
 const noteInput = z.object({ note: z.string().max(2000).optional() })
 const commentInput = z.object({ comment: z.string().min(1).max(4000) })
 const checkInput = z.object({ done: z.boolean() })
+const attachInput = z.object({
+  documentId: z.string().min(1),
+  kind: z.enum(['primary', 'supporting']),
+  note: z.string().max(2000).optional(),
+})
 
 submissionRoutes.get('/', async (req, res) => {
   res.json(await listVisible(currentUser(req)))
@@ -50,4 +56,11 @@ submissionRoutes.patch('/:code/checklist/:itemId', async (req, res) => {
   const parsed = checkInput.safeParse(req.body)
   if (!parsed.success) throw BadRequest()
   res.json(await toggleChecklistItem(currentUser(req), req.params.code, req.params.itemId, parsed.data.done))
+})
+
+submissionRoutes.post('/:code/documents', async (req, res) => {
+  const parsed = attachInput.safeParse(req.body)
+  if (!parsed.success) throw BadRequest()
+  const { documentId, kind, note } = parsed.data
+  res.json(await attachDocument(currentUser(req), req.params.code, documentId, kind, note))
 })

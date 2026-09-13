@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto'
-import type { Role } from '@imeri/shared'
-import { isVisible } from '@imeri/shared'
+import type { Role, Submission } from '@imeri/shared'
+import { isHolder, isVisible } from '@imeri/shared'
+import { prisma } from '../../db/client'
 import { toDomainSubmission } from '../../db/toDomain'
-import { BadRequest, NotFound } from '../../errors'
+import { BadRequest, Forbidden, NotFound } from '../../errors'
 import { env } from '../../env'
+import { loadStages } from '../flowRules/repository'
+import { SUBMISSION_INCLUDE, lockAndLoad } from '../submissions/repository'
 import { ALLOWED_CONTENT_TYPES } from '../../storage/FileStore'
 import { s3Store } from '../../storage/s3Store'
 import { documentRepo } from './repository'
@@ -85,4 +88,88 @@ export async function confirmUploaded(documentId: string): Promise<void> {
   }
 
   await documentRepo.markReady(documentId, meta.sizeBytes)
+}
+
+/**
+ * The primary document is frozen once the secretary forwards it: otherwise the
+ * deputy and director could initial one file and have its contents change behind
+ * them. Revision has to go through the official route — returned first.
+ */
+export async function attachDocument(
+  role: Role,
+  code: string,
+  documentId: string,
+  kind: 'primary' | 'supporting',
+  note?: string,
+): Promise<Submission> {
+  await confirmUploaded(documentId)
+  const stages = await loadStages()
+
+  return prisma.$transaction(async (tx) => {
+    const row = await lockAndLoad(tx, code)
+    if (!row) throw NotFound()
+    const submission = toDomainSubmission(row)
+    if (!isVisible(submission, role)) throw NotFound()
+
+    if (kind === 'primary') {
+      if (role.id !== row.requesterId || row.stageKey !== 'submitter') {
+        throw Forbidden('primary_document_frozen')
+      }
+    } else if (!isHolder(submission, role, stages)) {
+      throw Forbidden('not_your_desk')
+    }
+
+    const previous = await tx.document.findFirst({
+      where: { submissionId: row.id, kind, isCurrent: true },
+      orderBy: { version: 'desc' },
+    })
+
+    // Seed data backdates/forward-dates history entries deliberately (see
+    // prisma/seed.ts) so demo submissions look like they took days, which can
+    // put a seeded entry's `createdAt` ahead of the real "now". A newly created
+    // entry must still sort after every entry that already exists, so its
+    // timestamp is pinned to whichever is later.
+    const latestExisting = row.history.reduce((max, item) => Math.max(max, item.createdAt.getTime()), 0)
+    const createdAt = new Date(Math.max(Date.now(), latestExisting + 1))
+
+    const entry = await tx.historyEntry.create({
+      data: {
+        submissionId: row.id,
+        actorId: role.id,
+        actorName: role.name,
+        actorPosition: role.position,
+        kind: 'submit',
+        action:
+          kind === 'primary'
+            ? `mengunggah dokumen pengajuan v${(previous?.version ?? 0) + 1}`
+            : 'melampirkan dokumen pendamping',
+        ...(note === undefined || note.trim() === '' ? {} : { comment: note.trim() }),
+        fromStage: row.stageKey,
+        toStage: row.stageKey,
+        createdAt,
+      },
+    })
+
+    if (kind === 'primary' && previous) {
+      await tx.document.update({ where: { id: previous.id }, data: { isCurrent: false } })
+      await tx.document.update({
+        where: { id: documentId },
+        data: {
+          submissionId: row.id,
+          historyEntryId: entry.id,
+          lineageId: previous.lineageId,
+          version: previous.version + 1,
+          isCurrent: true,
+        },
+      })
+    } else {
+      await tx.document.update({
+        where: { id: documentId },
+        data: { submissionId: row.id, historyEntryId: entry.id, isCurrent: true },
+      })
+    }
+
+    const fresh = await tx.submission.findUniqueOrThrow({ where: { id: row.id }, include: SUBMISSION_INCLUDE })
+    return toDomainSubmission(fresh)
+  })
 }
